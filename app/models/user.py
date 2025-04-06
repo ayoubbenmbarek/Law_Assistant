@@ -7,6 +7,7 @@ from passlib.context import CryptContext
 from datetime import datetime, timedelta
 import os
 from dotenv import load_dotenv
+from loguru import logger
 
 # Load environment variables for security
 load_dotenv()
@@ -143,12 +144,6 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> User:
     if user is None:
         raise credentials_exception
         
-    if not user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Compte utilisateur inactif"
-        )
-        
     return User(
         id=user.id,
         email=user.email,
@@ -157,4 +152,42 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> User:
         profession=user.profession,
         created_at=user.created_at,
         is_active=user.is_active
-    ) 
+    )
+
+async def get_current_active_user(current_user: User = Depends(get_current_user)) -> User:
+    """
+    Get the current authenticated user and verify that the account is active.
+    This is used as a dependency to protect endpoints that require an active user.
+    """
+    if not current_user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Compte utilisateur inactif"
+        )
+    return current_user
+
+async def create_admin_user():
+    """
+    Create an admin user if it doesn't exist.
+    This is used during application startup to ensure there's always an admin account.
+    """
+    # Check if admin user already exists
+    admin_email = os.getenv("ADMIN_EMAIL", "admin@example.com")
+    admin_pass = os.getenv("ADMIN_PASSWORD", "admin123")
+    
+    admin_user = await get_user_by_email(admin_email)
+    if not admin_user:
+        logger.info("Création de l'utilisateur admin par défaut")
+        try:
+            await create_user(UserCreate(
+                email=admin_email,
+                name="Administrateur",
+                password=admin_pass,
+                is_professional=True,
+                profession="Administrateur"
+            ))
+            logger.info("Utilisateur admin créé avec succès")
+        except Exception as e:
+            logger.error(f"Erreur lors de la création de l'utilisateur admin: {str(e)}")
+    else:
+        logger.info("L'utilisateur admin existe déjà") 

@@ -1,0 +1,18 @@
+FROM node:18-alpine
+
+WORKDIR /app
+
+# Installation des dépendances
+COPY package.json webpack.config.js .babelrc ./
+RUN npm install
+
+# Copie des fichiers frontend
+COPY app/components ./app/components
+COPY app/frontend ./app/frontend
+COPY public ./public
+
+# Exposition du port
+EXPOSE 3009
+
+# Commande pour démarrer l'application en développement
+CMD ["npm", "run", "client"] 

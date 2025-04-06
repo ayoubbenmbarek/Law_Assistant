@@ -1,0 +1,106 @@
+version: '3.8'
+
+services:
+  # Service combiné pour l'application (frontend et backend)
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ai_legal_assistant_prod
+    restart: always
+    ports:
+      - "80:8009"  # Exposer le port 80 pour le trafic web
+    volumes:
+      - ./app:/app/app  # Monter le code source
+      - ./data:/app/data
+      - ./logs:/app/logs
+    env_file:
+      - .env.production
+    depends_on:
+      - postgres
+      - qdrant
+      - redis
+    networks:
+      - legal-assistant-network
+    environment:
+      - ENV=production
+      - VECTOR_DB_TYPE=qdrant
+      - QDRANT_URL=http://qdrant:6333
+      - CORS_ORIGINS=http://localhost:8009,https://votre-domaine.com
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8009/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Base de données PostgreSQL
+  postgres:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.postgres
+    container_name: legal_assistant_postgres_prod
+    restart: always
+    environment:
+      POSTGRES_DB: ${DB_NAME:-law_assistant}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-password}
+    ports:
+      - "5432"  # Port interne uniquement, non exposé sur l'hôte
+    volumes:
+      - postgres_data_prod:/var/lib/postgresql/data
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+    networks:
+      - legal-assistant-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Base de données vectorielle Qdrant
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: legal_assistant_qdrant_prod
+    restart: always
+    ports:
+      - "6333"  # Port interne uniquement, non exposé sur l'hôte
+    volumes:
+      - qdrant_data_prod:/qdrant/storage
+    networks:
+      - legal-assistant-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6333/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+  # Redis pour la mise en cache et les tâches asynchrones
+  redis:
+    image: redis:alpine
+    container_name: legal_assistant_redis_prod
+    restart: always
+    command: redis-server --appendonly yes --port 6379
+    ports:
+      - "6379"  # Port interne uniquement, non exposé sur l'hôte
+    volumes:
+      - redis_data_prod:/data
+    networks:
+      - legal-assistant-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "-p", "6379", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+# Configuration des volumes pour la persistence des données
+volumes:
+  postgres_data_prod:
+  qdrant_data_prod:
+  redis_data_prod:
+
+# Configuration du réseau
+networks:
+  legal-assistant-network:
+    driver: bridge 

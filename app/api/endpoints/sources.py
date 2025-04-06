@@ -1,7 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
-from typing import List, Optional
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from typing import List, Optional, Dict
 from sqlalchemy.orm import Session
 import time
+from loguru import logger
 
 from app.models.sources import (
     LegalSource, 
@@ -158,6 +159,15 @@ async def get_source_by_id(
     Récupérer les détails d'une source juridique par son ID
     """
     try:
+        logger.info(f"Recherche de la source avec ID: {source_id}")
+        
+        if not vector_store or not vector_store.is_functional:
+            logger.error("Vector store non disponible")
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Service de recherche vectorielle non disponible actuellement"
+            )
+            
         # Rechercher la source dans la base vectorielle
         result = vector_store.get_document(source_id)
         
@@ -222,4 +232,32 @@ async def get_source_by_id(
         raise HTTPException(
             status_code=500,
             detail=f"Erreur lors de la récupération de la source: {str(e)}"
-        ) 
+        )
+
+@router.get("/sources/search", response_model=List[Dict])
+async def search_sources(
+    query: str,
+    limit: int = 10,
+    doc_type: Optional[str] = None,
+    current_user: User = Depends(get_current_active_user)
+) -> List[Dict]:
+    """
+    Recherche des sources juridiques similaires à la requête
+    """
+    logger.info(f"Recherche de sources pour: '{query}', type: {doc_type}, limite: {limit}")
+    
+    if not vector_store or not vector_store.is_functional:
+        logger.error("Vector store non disponible")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Service de recherche vectorielle non disponible actuellement"
+        )
+    
+    results = vector_store.search(
+        query=query,
+        limit=limit,
+        doc_type=doc_type
+    )
+    
+    logger.info(f"Nombre de résultats trouvés: {len(results)}")
+    return results 

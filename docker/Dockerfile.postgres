@@ -1,0 +1,42 @@
+FROM postgres:15
+
+# Installation des dépendances de compilation
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        build-essential \
+        postgresql-server-dev-15 \
+        git \
+        ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Téléchargement et installation de pgvector
+RUN git clone --branch v0.5.1 https://github.com/pgvector/pgvector.git \
+    && cd pgvector \
+    && make \
+    && make install \
+    && cd .. \
+    && mkdir -p /usr/share/postgresql/15/extension/ \
+    && cp pgvector/sql/vector.sql /usr/share/postgresql/15/extension/pgvector--0.5.1.sql \
+    && rm -rf pgvector
+
+# Création du fichier control et du fichier SQL pour l'extension
+RUN echo "# pgvector extension" > /usr/share/postgresql/15/extension/pgvector.control \
+    && echo "comment = 'vector similarity search'" >> /usr/share/postgresql/15/extension/pgvector.control \
+    && echo "default_version = '0.5.1'" >> /usr/share/postgresql/15/extension/pgvector.control \
+    && echo "module_pathname = '\$libdir/vector'" >> /usr/share/postgresql/15/extension/pgvector.control \
+    && echo "relocatable = false" >> /usr/share/postgresql/15/extension/pgvector.control \
+    && echo "CREATE EXTENSION IF NOT EXISTS pgvector;" > /docker-entrypoint-initdb.d/10-pgvector.sql
+
+# Nettoyer les dépendances de build qui ne sont plus nécessaires
+RUN apt-get update \
+    && apt-get remove -y \
+        build-essential \
+        git \
+    && apt-get autoremove -y \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Conserver postgresql-server-dev-15 car il contient des fichiers nécessaires à l'exécution de l'extension
+
+# Exposer le port standard de PostgreSQL
+EXPOSE 5432 

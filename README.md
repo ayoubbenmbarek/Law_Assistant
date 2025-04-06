@@ -133,7 +133,7 @@ Un outil d'administration en ligne de commande permet de:
 4. Accéder à l'application:
    - API: http://localhost:8009
    - Documentation API: http://localhost:8009/docs
-   - Adminer (gestion BDD): http://localhost:8080
+   - Adminer (gestion BDD): http://localhost:8089
 
 ### Installation manuelle
 
@@ -202,4 +202,110 @@ Cet assistant juridique fournit des informations à titre indicatif uniquement e
 
 ## Licence
 
-© 2023. Tous droits réservés. 
+© 2023. Tous droits réservés.
+
+## Architecture
+
+L'application est composée de :
+- Un **backend** FastAPI en Python qui gère l'API REST, la recherche vectorielle et la génération de réponses
+- Un **frontend** React qui fournit l'interface utilisateur
+- Une base de données **PostgreSQL** pour le stockage des données relationnelles
+- Une base de données vectorielle **Qdrant** pour la recherche sémantique
+- **Redis** pour la mise en cache et les tâches asynchrones
+
+## Prérequis
+
+- Docker et Docker Compose
+- Git
+- Python 3.11+ (pour le développement local)
+- Node.js 16+ (pour le développement frontend local)
+
+## Configuration en développement
+
+1. Cloner le dépôt :
+   ```bash
+   git clone <url-du-depot>
+   cd law_assistant
+   ```
+
+2. Configurer les variables d'environnement :
+   ```bash
+   cp .env.example .env
+   # Modifier les valeurs selon votre environnement
+   ```
+
+3. Lancer l'application en mode développement :
+   ```bash
+   docker-compose up -d
+   ```
+
+4. Accéder à l'application :
+   - Backend: http://localhost:8009
+   - Frontend: http://localhost:3009
+   - API Docs: http://localhost:8009/docs
+   - Adminer (gestion BD): http://localhost:8099
+
+## Configuration en production
+
+1. Préparer l'environnement de production :
+   ```bash
+   cp .env.example .env.production
+   # Modifier les valeurs pour la production (secrets, URLs, etc.)
+   ```
+
+2. Déployer avec le script de déploiement :
+   ```bash
+   ./deploy.sh
+   ```
+
+3. Accéder à l'application :
+   - Application (Frontend + Backend): http://votre-domaine.com
+   - API: http://votre-domaine.com/api
+   - API Docs: http://votre-domaine.com/docs
+
+## Résolution des problèmes de connectivité
+
+Si vous rencontrez des problèmes de connexion entre le frontend et le backend :
+
+1. Vérifiez que les URLs d'API sont correctement configurées :
+   - En développement : `.env.development` -> `REACT_APP_API_URL=http://localhost:8009`
+   - En production : `.env.production` -> `REACT_APP_API_URL=` (vide pour utiliser la même origine)
+
+2. Assurez-vous que les origines CORS sont correctement configurées :
+   - Vérifiez `.env` ou `.env.production` -> `CORS_ORIGINS=http://localhost:3009,http://localhost:8009,...`
+
+3. Si les services ne sont pas accessibles dans Docker :
+   - Utilisez les noms de service Docker plutôt que localhost dans les variables d'environnement Docker (exemple : `redis` au lieu de `localhost`)
+
+## Structure des fichiers clés
+
+```
+├── app/                    # Code source de l'application
+│   ├── api/                # Endpoints d'API
+│   ├── components/         # Composants React
+│   ├── data/               # Gestion des données
+│   ├── frontend/           # Configuration frontend
+│   ├── models/             # Modèles de données
+│   ├── utils/              # Utilitaires
+│   └── main.py             # Point d'entrée FastAPI
+├── database/               # Scripts SQL
+├── docker/                 # Fichiers Docker personnalisés
+├── .env.development        # Variables d'environnement dev frontend
+├── .env.production         # Variables d'environnement production
+├── docker-compose.yml      # Configuration Docker développement
+├── docker-compose.production.yml  # Configuration Docker production
+└── deploy.sh               # Script de déploiement
+```
+
+## Adaptation pour votre domaine
+
+Pour configurer l'application sur votre propre domaine :
+
+1. Modifiez `.env.production` :
+   ```
+   CORS_ORIGINS=https://votre-domaine.com
+   ```
+
+2. Modifiez `app/core/config.py` pour ajouter votre domaine à la liste `CORS_ORIGINS`
+
+3. Reconstruisez et redéployez l'application 

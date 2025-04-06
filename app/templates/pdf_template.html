@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Réponse Juridique</title>
+  <style>
+    /* Styles généraux */
+    body {
+      font-family: "DejaVu Sans", Arial, Helvetica, sans-serif;
+      font-size: 12pt;
+      line-height: 1.5;
+      color: #333;
+      margin: 0;
+      padding: 0;
+    }
+    
+    .container {
+      width: 100%;
+      max-width: 210mm; /* Largeur A4 */
+      margin: 0 auto;
+      padding: 20mm 15mm; /* Marges pour impression */
+    }
+    
+    /* En-tête et pied de page */
+    header {
+      text-align: center;
+      margin-bottom: 10mm;
+      padding-bottom: 5mm;
+      border-bottom: 1pt solid #ddd;
+    }
+    
+    footer {
+      text-align: center;
+      font-size: 9pt;
+      color: #666;
+      margin-top: 10mm;
+      padding-top: 5mm;
+      border-top: 1pt solid #ddd;
+    }
+    
+    /* Titres */
+    h1 {
+      font-size: 24pt;
+      color: #2e3b4e;
+      margin-bottom: 5mm;
+    }
+    
+    h2 {
+      font-size: 16pt;
+      color: #4f46e5;
+      margin-top: 10mm;
+      margin-bottom: 5mm;
+      padding-bottom: 2mm;
+      border-bottom: 0.5pt solid #eee;
+    }
+    
+    /* Contenu */
+    p {
+      margin-bottom: 5mm;
+      text-align: justify;
+    }
+    
+    ul, ol {
+      margin-bottom: 5mm;
+    }
+    
+    li {
+      margin-bottom: 2mm;
+    }
+    
+    .recommendations {
+      background-color: #f7f9fc;
+      padding: 5mm;
+      border-radius: 2mm;
+      margin-bottom: 5mm;
+    }
+    
+    .sources {
+      font-size: 10pt;
+      color: #555;
+    }
+    
+    .disclaimer {
+      background-color: #fff8dc;
+      padding: 5mm;
+      border-radius: 2mm;
+      font-size: 10pt;
+      font-style: italic;
+      margin-top: 10mm;
+    }
+    
+    .metadata {
+      text-align: right;
+      font-size: 9pt;
+      color: #888;
+      margin-top: 5mm;
+    }
+    
+    .page-break {
+      page-break-after: always;
+    }
+    
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 5mm;
+    }
+    
+    th, td {
+      padding: 2mm;
+      text-align: left;
+      border-bottom: 0.5pt solid #ddd;
+    }
+    
+    th {
+      background-color: #f2f2f2;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Réponse Juridique</h1>
+      <p class="metadata">Généré le {{ generated_at }}</p>
+    </header>
+
+    <main>
+      <!-- Introduction -->
+      <section>
+        <h2>Introduction</h2>
+        {% for paragraph in introduction.split('\n') %}
+          <p>{{ paragraph }}</p>
+        {% endfor %}
+      </section>
+
+      <!-- Cadre juridique -->
+      <section>
+        <h2>Cadre juridique</h2>
+        {% for paragraph in legal_framework.split('\n') %}
+          <p>{{ paragraph }}</p>
+        {% endfor %}
+      </section>
+
+      <!-- Application -->
+      <section>
+        <h2>Application</h2>
+        {% for paragraph in application.split('\n') %}
+          <p>{{ paragraph }}</p>
+        {% endfor %}
+      </section>
+
+      <!-- Exceptions (si présent) -->
+      {% if exceptions %}
+        <section>
+          <h2>Exceptions et cas particuliers</h2>
+          {% for paragraph in exceptions.split('\n') %}
+            <p>{{ paragraph }}</p>
+          {% endfor %}
+        </section>
+      {% endif %}
+
+      <!-- Recommandations -->
+      <section>
+        <h2>Recommandations</h2>
+        <div class="recommendations">
+          <ul>
+            {% for recommendation in recommendations %}
+              <li>{{ recommendation }}</li>
+            {% endfor %}
+          </ul>
+        </div>
+      </section>
+
+      <!-- Sources -->
+      <section>
+        <h2>Sources</h2>
+        <div class="sources">
+          <table>
+            <thead>
+              <tr>
+                <th>Titre</th>
+                <th>Type</th>
+                <th>Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for source in sources %}
+                <tr>
+                  <td>{{ source.title }}</td>
+                  <td>{{ source.type }}</td>
+                  <td>{{ source.date or "" }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Avertissement -->
+      <section>
+        <div class="disclaimer">
+          <strong>Avertissement :</strong>
+          <p>{{ disclaimer }}</p>
+          {% if date_updated %}
+            <p>Informations à jour au {{ date_updated[:10] }}</p>
+          {% endif %}
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <p>© {{ generated_at[:4] }} Assistant Juridique IA - Document généré automatiquement</p>
+      <p>Ce document est fourni à titre informatif uniquement et ne constitue pas un avis juridique.</p>
+    </footer>
+  </div>
+</body>
+</html> 

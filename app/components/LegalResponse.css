@@ -1,0 +1,138 @@
+.legal-response {
+  background-color: white;
+  border-radius: 8px;
+  padding: 2rem;
+}
+
+.legal-response h2 {
+  color: var(--primary-color);
+  margin-bottom: 1.5rem;
+  font-size: 1.6rem;
+  text-align: center;
+  position: relative;
+}
+
+.legal-response h2::after {
+  content: '';
+  display: block;
+  width: 50px;
+  height: 3px;
+  background-color: var(--secondary-color);
+  margin: 10px auto 0;
+}
+
+.legal-response-section {
+  margin-bottom: 2rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.legal-response-section:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+}
+
+.legal-response-section h3 {
+  color: var(--primary-color);
+  margin-bottom: 1rem;
+  font-size: 1.3rem;
+  display: flex;
+  align-items: center;
+}
+
+.legal-response-section h3::before {
+  content: '';
+  display: inline-block;
+  width: 8px;
+  height: 20px;
+  background-color: var(--secondary-color);
+  margin-right: 12px;
+  border-radius: 4px;
+}
+
+.legal-response-section p {
+  margin-bottom: 1rem;
+  line-height: 1.7;
+}
+
+.legal-response-list {
+  list-style-type: none;
+  padding-left: 0;
+}
+
+.legal-response-list li {
+  padding: 0.5rem 0;
+  padding-left: 1.5rem;
+  position: relative;
+}
+
+.legal-response-list li::before {
+  content: '•';
+  color: var(--secondary-color);
+  font-weight: bold;
+  position: absolute;
+  left: 0;
+}
+
+.sources-list li {
+  background-color: var(--lightest-bg);
+  padding: 0.75rem 1rem;
+  margin-bottom: 0.75rem;
+  border-radius: 4px;
+  font-size: 0.9rem;
+}
+
+.disclaimer-box {
+  background-color: rgba(243, 156, 18, 0.1);
+  border-left: 4px solid var(--warning-color);
+  padding: 1rem;
+  margin-top: 1rem;
+  border-radius: 4px;
+}
+
+.date-updated {
+  text-align: right;
+  color: var(--light-text);
+  font-size: 0.85rem;
+  margin-top: 1rem;
+  font-style: italic;
+}
+
+.response-footer {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+.action-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1.2rem;
+  background-color: var(--lightest-bg);
+  color: var(--primary-color);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.action-button:hover {
+  background-color: var(--light-bg);
+}
+
+/* Responsive styles */
+@media (max-width: 768px) {
+  .legal-response {
+    padding: 1.5rem;
+  }
+  
+  .response-footer {
+    flex-wrap: wrap;
+  }
+  
+  .action-button {
+    flex: 1 0 40%;
+  }
+} 

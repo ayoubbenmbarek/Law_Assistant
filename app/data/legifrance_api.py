@@ -2,7 +2,7 @@ import os
 import requests
 import json
 from typing import List, Dict, Any, Optional
-from datetime import datetime
+from datetime import datetime, timedelta
 from dotenv import load_dotenv
 from loguru import logger
 from app.utils.vector_store import vector_store
@@ -11,8 +11,8 @@ from app.utils.vector_store import vector_store
 load_dotenv()
 
 # API configuration
-LEGIFRANCE_API_KEY = os.getenv("LEGIFRANCE_API_KEY")
-LEGIFRANCE_API_SECRET = os.getenv("LEGIFRANCE_API_SECRET")
+LEGIFRANCE_API_KEY = os.getenv("PISTE_API_KEY", "3ae7cb04-6b64-42b7-abd7-cd3f10f2e72c")
+LEGIFRANCE_API_SECRET = os.getenv("PISTE_SECRET_KEY", "b0361bfa-a858-4635-bc11-d351f91345ab")
 LEGIFRANCE_API_BASE_URL = "https://api.aife.economie.gouv.fr/dila/legifrance/lf-engine-app"
 
 class LegifranceAPI:
@@ -50,7 +50,7 @@ class LegifranceAPI:
             
             # Token expires in (default 30min)
             expires_in = auth_result.get("expires_in", 1800)
-            self.token_expiry = datetime.now() + datetime.timedelta(seconds=expires_in)
+            self.token_expiry = datetime.now() + timedelta(seconds=expires_in)
             
             logger.info("Authentification Légifrance réussie")
             return self.token
@@ -244,6 +244,81 @@ class LegifranceAPI:
         except Exception as e:
             logger.error(f"Échec d'importation dans la base vectorielle: {str(e)}")
             raise
+
+    async def import_codes(self, limit: int = 20, search_terms: List[str] = None):
+        """
+        Importe des articles de codes juridiques dans la base vectorielle
+        
+        Args:
+            limit: Nombre maximum d'articles à importer par terme de recherche
+            search_terms: Liste de termes de recherche pour trouver des articles pertinents
+        """
+        if search_terms is None:
+            search_terms = [
+                "droit", "obligation", "contrat", "travail", "vente", 
+                "penal", "impot", "famille", "société", "commerce",
+                "environnement", "propriété", "construction", "consommation"
+            ]
+        
+        imported_count = 0
+        
+        logger.info(f"Début de l'importation des codes avec {len(search_terms)} termes de recherche")
+        
+        for term in search_terms:
+            try:
+                logger.info(f"Recherche dans les codes avec le terme: {term}")
+                results = await self.search_codes(term, limit)
+                
+                if results:
+                    await self.import_to_vector_store(results)
+                    imported_count += len(results)
+                    logger.info(f"Importé {len(results)} articles de code pour le terme '{term}'")
+                else:
+                    logger.warning(f"Aucun résultat trouvé pour le terme '{term}'")
+            
+            except Exception as e:
+                logger.error(f"Erreur lors de l'importation des codes pour le terme '{term}': {str(e)}")
+        
+        logger.info(f"Importation des codes terminée. Total: {imported_count} articles importés")
+        return {"imported_count": imported_count}
+
+    async def import_jurisprudence(self, limit: int = 20, search_terms: List[str] = None):
+        """
+        Importe des décisions de jurisprudence dans la base vectorielle
+        
+        Args:
+            limit: Nombre maximum de décisions à importer par terme de recherche
+            search_terms: Liste de termes de recherche pour trouver des décisions pertinentes
+        """
+        if search_terms is None:
+            search_terms = [
+                "licenciement", "faute grave", "contrat de travail", "rupture conventionnelle",
+                "divorce", "garde enfant", "succession", "bail", "loyer",
+                "consommation", "vice caché", "garantie", "responsabilité", "préjudice",
+                "dommages et intérêts", "assurance", "fraude", "impôt"
+            ]
+        
+        imported_count = 0
+        
+        logger.info(f"Début de l'importation de jurisprudence avec {len(search_terms)} termes de recherche")
+        
+        for term in search_terms:
+            try:
+                logger.info(f"Recherche dans la jurisprudence avec le terme: {term}")
+                results = await self.search_jurisprudence(term, limit)
+                
+                if results:
+                    await self.import_to_vector_store(results)
+                    imported_count += len(results)
+                    logger.info(f"Importé {len(results)} décisions pour le terme '{term}'")
+                else:
+                    logger.warning(f"Aucun résultat trouvé pour le terme '{term}'")
+            
+            except Exception as e:
+                logger.error(f"Erreur lors de l'importation de jurisprudence pour le terme '{term}': {str(e)}")
+        
+        logger.info(f"Importation de jurisprudence terminée. Total: {imported_count} décisions importées")
+        return {"imported_count": imported_count}
 
 # Créer l'instance du client API
 legifrance_api = LegifranceAPI() 

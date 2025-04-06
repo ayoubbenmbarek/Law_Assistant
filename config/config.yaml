@@ -1,0 +1,24 @@
+log_level: INFO
+
+service:
+  host: 0.0.0.0
+  http_port: 6339
+  grpc_port: 6340
+
+storage:
+  # Path for data storage
+  storage_path: ./storage
+
+  # Number of parallel IO threads, used by storage for CPU-intensive tasks
+  # Default value is a number of logical processor cores
+  performance:
+    max_search_threads: 0
+
+  optimizers:
+    # Turn on/off payload indexing for faster vector searches with payload filters
+    # Default: true
+    indexed_payload: true
+
+    # Run optimization in the background
+    # Default: true
+    optimizer_poll_interval_sec: 60 
