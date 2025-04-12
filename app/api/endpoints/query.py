@@ -58,17 +58,28 @@ async def create_query(
                 disclaimer="Cette réponse est fournie à titre informatif uniquement et ne constitue pas un avis juridique professionnel."
             )
         
-        # Construction de la liste des sources
-        sources = []
+        # Construction de la liste des sources (en tant que chaînes de caractères)
+        sources_raw = []
+        sources_strings = []
+        
         for doc in relevant_docs:
-            sources.append({
+            # Garder la structure complète pour une utilisation potentielle
+            source_dict = {
                 "id": doc.get("id", str(uuid.uuid4())),
                 "title": doc.get("title", "Sans titre"),
                 "type": doc.get("type", "Non spécifié"),
                 "content": doc.get("content", "")[:200] + "..." if len(doc.get("content", "")) > 200 else doc.get("content", ""),
                 "date": doc.get("date", datetime.now().isoformat()),
                 "url": doc.get("url", "")
-            })
+            }
+            sources_raw.append(source_dict)
+            
+            # Créer une représentation textuelle pour chaque source
+            source_text = f"{source_dict['title']} ({source_dict.get('date', 'N/A')})"
+            if source_dict.get('url'):
+                source_text += f" - {source_dict['url']}"
+            
+            sources_strings.append(source_text)
         
         # Exemple de réponse (à remplacer par la génération réelle)
         legal_response = LegalResponse(
@@ -77,7 +88,7 @@ async def create_query(
             application="Dans votre cas spécifique...",
             exceptions="Il existe cependant des exceptions...",
             recommendations=["Consulter un avocat spécialisé", "Rassembler les documents pertinents"],
-            sources=sources,
+            sources=sources_strings,  # Utiliser la liste de chaînes de caractères
             date_updated=datetime.now().isoformat(),
             disclaimer="Cette réponse est fournie à titre informatif uniquement et ne constitue pas un avis juridique professionnel."
         )

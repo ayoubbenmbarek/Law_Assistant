@@ -1,0 +1,331 @@
+{
+  "page": 0,
+  "page_size": 5,
+  "query": {
+    "query": "propriété",
+    "date_start": "2020-01-01",
+    "date_end": "2023-12-31",
+    "page_size": 5,
+    "field": [],
+    "type": [],
+    "theme": [],
+    "chamber": [],
+    "formation": [],
+    "jurisdiction": [],
+    "location": [],
+    "publication": [],
+    "solution": []
+  },
+  "total": 4165,
+  "previous_page": null,
+  "next_page": "query=propri%C3%A9t%C3%A9&date_start=2020-01-01&date_end=2023-12-31&page_size=5&field=&type=&theme=&chamber=&formation=&jurisdiction=&location=&publication=&solution=&page=1",
+  "took": 53,
+  "max_score": 1305.1062,
+  "results": [
+    {
+      "score": 1,
+      "highlights": {
+        "text": [
+          "M] (les consorts [B]-[M]) en revendication de la <em>propriété</em> d'une parcelle, cadastrée AL n° [Cadastre",
+          "La commune fait grief à l'arrêt de déclarer irrecevable son action en revendication de la <em>propriété</em> de",
+          "des personnes publiques qui définissent les modes spécifiques d'acquisition de la <em>propriété</em> immobilière",
+          "Selon les deux premiers textes, la <em>propriété</em> s'acquiert par la prescription qui est un moyen d'acquérir",
+          "Le livre susvisé énumère des modes d'acquisition de la <em>propriété</em> des personnes publiques, sans exclure"
+        ]
+      },
+      "id": "63b7c9be6b63637c907b762e",
+      "jurisdiction": "cc",
+      "chamber": "civ3",
+      "number": "21-18.993",
+      "numbers": [
+        "21-18.993"
+      ],
+      "ecli": "ECLI:FR:CCASS:2023:C300001",
+      "formation": "fs",
+      "publication": [
+        "b"
+      ],
+      "decision_date": "2023-01-04",
+      "solution": "cassation",
+      "type": "other",
+      "summary": "Les personnes publiques peuvent acquérir par prescription",
+      "themes": [
+        "prescription acquisitive",
+        "conditions",
+        "personne pouvant l'invoquer",
+        "détermination"
+      ],
+      "files": [],
+      "titlesAndSummaries": [
+        {
+          "titles": [
+            "PRESCRIPTION ACQUISITIVE",
+            "Conditions",
+            "Personne pouvant l'invoquer",
+            "Détermination"
+          ],
+          "summary": "Les personnes publiques peuvent acquérir par prescription",
+          "secondaryTitles": []
+        }
+      ],
+      "particularInterest": false
+    },
+    {
+      "score": 0.9980465957483001,
+      "highlights": {
+        "text": [
+          "d'un droit de <em>propriété</em> privée sont réservées par nature à la compétence de l'autorité judiciaire et",
+          "sans rechercher si l'exercice par l'ASL de son droit de <em>propriété</em> était en cause ; qu'en s'appuyant",
+          "La commune fait grief à l'arrêt de constater le transfert de <em>propriété</em> de la voirie et des réseaux du",
+          "qui n'a finalement jamais eu lieu ; qu'en l'absence d'un tel acte, la <em>propriété</em> des voies ne pouvait",
+          "sans rechercher si l'exercice par l'ASL de son droit de <em>propriété</em> était en cause ; qu'en s'appuyant"
+        ]
+      },
+      "id": "63be612b13ef607c90ab614c",
+      "jurisdiction": "cc",
+      "chamber": "civ3",
+      "number": "21-20.388",
+      "numbers": [
+        "21-20.388"
+      ],
+      "ecli": "ECLI:FR:CCASS:2023:C300012",
+      "formation": "fs",
+      "publication": [
+        "b"
+      ],
+      "decision_date": "2023-01-11",
+      "solution": "rejet",
+      "type": "other",
+      "summary": "L'action d'une association syndicale libre (ASL) tendant à voir dire que la voirie et les réseaux d'un lotissement sont la propriété de la commune, après que leur cession forcée eut été réalisée par une délibération de cette commune, est une action réelle immobilière, soumise à la prescription trentenaire de l'article 2227 du code civil",
+      "themes": [
+        "prescription civile",
+        "prescription trentenaire",
+        "article 2227 du code civil",
+        "domaine d'application",
+        "cas"
+      ],
+      "files": [],
+      "titlesAndSummaries": [
+        {
+          "titles": [
+            "PRESCRIPTION CIVILE",
+            "Prescription trentenaire",
+            "Article 2227 du code civil",
+            "Domaine d'application",
+            "Cas"
+          ],
+          "summary": "L'action d'une association syndicale libre (ASL) tendant à voir dire que la voirie et les réseaux d'un lotissement sont la propriété de la commune, après que leur cession forcée eut été réalisée par une délibération de cette commune, est une action réelle immobilière, soumise à la prescription trentenaire de l'article 2227 du code civil",
+          "secondaryTitles": []
+        }
+      ],
+      "particularInterest": false
+    },
+    {
+      "score": 0.9835187358699238,
+      "highlights": {
+        "text": [
+          "G... n'en avait détenu que l'usufruit, la nue-<em>propriété</em> appartenant à ses héritiers dès le décès de W",
+          "G..., l'usufruit et la nue-<em>propriété</em> ont été réunis sans donner lieu à taxation, alors que son décès",
+          "des actifs soit de leur nue-<em>propriété</em> ; que ce droit était certain ; que seule la remise de celle-ci",
+          "G... était bénéficiaire en nue-<em>propriété</em>",
+          "la <em>propriété</em> légale (legal ownership) du trustee et la <em>propriété</em> virtuelle (equitable ownership) du"
+        ]
+      },
+      "id": "5fca277de35a255d41ca73a9",
+      "jurisdiction": "cc",
+      "chamber": "comm",
+      "number": "18-14.242",
+      "numbers": [
+        "18-14.242"
+      ],
+      "ecli": "ECLI:FR:CCASS:2020:CO00673",
+      "formation": "frh",
+      "publication": [
+        "b"
+      ],
+      "decision_date": "2020-11-18",
+      "solution": "cassation",
+      "type": "other",
+      "summary": "Il résulte de l'article 750 ter du code général des impôts, dans sa rédaction issue de la loi n° 98-1266 du 30 décembre 1998, que le fait générateur des droits de mutation à titre gratuit est constitué par le transfert de propriété, qui, s'agissant de biens placés dans un trust, s'opère par l'effet de la distribution de l'actif du trust au bénéficiaire final, au jour de sa clôture, laquelle peut être postérieure au décès du constituant",
+      "themes": [
+        "impots et taxes",
+        "enregistrement",
+        "droits de mutation",
+        "mutation à titre gratuit",
+        "fait générateur",
+        "détermination",
+        "transfert de propriété",
+        "applications diverses",
+        "distribution de l'actif d'un trust au bénéficiaire final"
+      ],
+      "files": [],
+      "titlesAndSummaries": [
+        {
+          "titles": [
+            "IMPOTS ET TAXES",
+            "Enregistrement",
+            "Droits de mutation",
+            "Mutation à titre gratuit",
+            "Fait générateur",
+            "Détermination",
+            "Transfert de propriété",
+            "Applications diverses",
+            "Distribution de l'actif d'un trust au bénéficiaire final"
+          ],
+          "summary": "Il résulte de l'article 750 ter du code général des impôts, dans sa rédaction issue de la loi n° 98-1266 du 30 décembre 1998, que le fait générateur des droits de mutation à titre gratuit est constitué par le transfert de propriété, qui, s'agissant de biens placés dans un trust, s'opère par l'effet de la distribution de l'actif du trust au bénéficiaire final, au jour de sa clôture, laquelle peut être postérieure au décès du constituant",
+          "secondaryTitles": []
+        }
+      ],
+      "particularInterest": false
+    },
+    {
+      "score": 0.9791051486844519,
+      "highlights": {
+        "text": [
+          "accord entre la personne publique et les propriétaires sur l'opération portant extinction du droit de <em>propriété</em>",
+          "Dans le cas d'une décision administrative portant atteinte à la <em>propriété</em> privée, l'accord du propriétaire",
+          "comprises, avait conduit à ce que M. et Mme T... soient définitivement dépossédés de leur droit de <em>propriété</em>",
+          "Dans le cas d'une décision administrative portant atteinte à la <em>propriété</em> privée, le juge administratif",
+          "ce qui suppose l'absence d'accord de la personne titulaire du droit de <em>propriété</em> à l'exécution de la"
+        ]
+      },
+      "id": "5fca5ca58926df3950191004",
+      "jurisdiction": "cc",
+      "chamber": "civ1",
+      "number": "19-11.864",
+      "numbers": [
+        "19-11.864"
+      ],
+      "ecli": "ECLI:FR:CCASS:2020:C100105",
+      "formation": "frh",
+      "publication": [
+        "b"
+      ],
+      "decision_date": "2020-02-05",
+      "solution": "cassation",
+      "type": "other",
+      "summary": "Dans le cas d'une décision administrative portant atteinte à la propriété privée, l'accord du propriétaire exclut l'existence d'une voie de fait ou d'une emprise irrégulière, à moins que l'action de l'administration n'ait excédé substantiellement les limites prévues par cet accord. \nDès lors, ne donne pas de base légale à sa décision une cour d'appel qui, pour rejeter la demande en réparation du préjudice résultant de la destruction, par une commune, de la haie végétale clôturant une parcelle privée, retient que les arbres ont été arrachés en la présence du propriétaire de cette parcelle et avec son accord, sans rechercher, comme il le lui était demandé, si, en procédant à l'arrachage de la haie sur toute sa longueur, la commune n'avait pas outrepassé l'autorisation qui lui avait été accordée",
+      "themes": [
+        "separation des pouvoirs",
+        "compétence judiciaire",
+        "domaine d'application",
+        "contentieux de la voie de fait",
+        "voie de fait",
+        "définition",
+        "exclusion",
+        "accord du propriétaire",
+        "conditions",
+        "détermination",
+        "portée"
+      ],
+      "files": [],
+      "titlesAndSummaries": [
+        {
+          "titles": [
+            "SEPARATION DES POUVOIRS",
+            "Compétence judiciaire",
+            "Domaine d'application",
+            "Contentieux de la voie de fait",
+            "Voie de fait",
+            "Définition",
+            "Exclusion",
+            "Accord du propriétaire",
+            "Conditions",
+            "Détermination",
+            "Portée"
+          ],
+          "summary": "Dans le cas d'une décision administrative portant atteinte à la propriété privée, l'accord du propriétaire exclut l'existence d'une voie de fait ou d'une emprise irrégulière, à moins que l'action de l'administration n'ait excédé substantiellement les limites prévues par cet accord. Dès lors, ne donne pas de base légale à sa décision une cour d'appel qui, pour rejeter la demande en réparation du préjudice résultant de la destruction, par une commune, de la haie végétale clôturant une parcelle privée, retient que les arbres ont été arrachés en la présence du propriétaire de cette parcelle et avec son accord, sans rechercher, comme il le lui était demandé, si, en procédant à l'arrachage de la haie sur toute sa longueur, la commune n'avait pas outrepassé l'autorisation qui lui avait été accordée",
+          "secondaryTitles": []
+        },
+        {
+          "titles": [
+            "SEPARATION DES POUVOIRS",
+            "Compétence judiciaire",
+            "Domaine d'application",
+            "Action en réparation",
+            "Action de l'administration ayant entraîné l'extinction du droit de propriété"
+          ],
+          "summary": "Dans le cas d'une décision administrative portant atteinte à la propriété privée, le juge administratif, compétent pour statuer sur le recours en annulation d'une telle décision et, le cas échéant, pour adresser des injonctions à l'administration, l'est également pour connaître de conclusions tendant à la réparation des conséquences dommageables de cette décision administrative, hormis le cas où elle aurait pour effet l'extinction du droit de propriété. Dès lors, viole la loi des 16-24 août 1790 et l'article 544 du code civil une cour d'appel qui, pour rejeter la demande en réparation du préjudice résultant de la destruction, par une commune, de la haie végétale clôturant une parcelle privée, retient que l'intervention de la commune n'a pas eu pour effet d'éteindre le droit de propriété, alors que, selon ses propres constatations, cette dernière avait procédé à l'arrachage de la haie, constituée d'arbres, sur toute sa longueur, et causé ainsi l'extinction du droit des propriétaires de ces végétaux",
+          "secondaryTitles": []
+        }
+      ],
+      "particularInterest": false
+    },
+    {
+      "score": 0.9734760282343308,
+      "highlights": {
+        "text": [
+          "N'ayant pas été payée de ses factures, la société Tech Data, se prévalant d'une clause de réserve de <em>propriété</em>",
+          "Selon le deuxième de ces textes, le droit de <em>propriété</em> du bien retenu à titre de garantie par l'effet",
+          "d'une clause de réserve de <em>propriété</em> se reporte sur la créance du débiteur à l'égard du sous-acquéreur",
+          "que la revendication qu'il permet du prix ou de la partie du prix des biens vendus avec réserve de <em>propriété</em>",
+          "collective de ce dernier, tend seulement à rendre opposable à cette procédure le report du droit de <em>propriété</em>"
+        ]
+      },
+      "id": "5fd8717b1a5fed8c660cf899",
+      "jurisdiction": "cc",
+      "chamber": "comm",
+      "number": "19-16.542",
+      "numbers": [
+        "19-16.542"
+      ],
+      "ecli": "ECLI:FR:CCASS:2020:CO00827",
+      "formation": "fs",
+      "publication": [
+        "b"
+      ],
+      "decision_date": "2020-12-09",
+      "solution": "cassation",
+      "type": "other",
+      "summary": "Selon l'article 2372 du code civil, le droit de propriété d'un bien retenu à titre de garantie par l'effet d'une clause de réserve de propriété se reporte sur la créance du débiteur à l'égard du sous-acquéreur.\nIl résulte de l'article L. 624-18 du code de commerce que la revendication qu'il permet du prix ou de la partie du prix des biens vendus avec réserve de propriété, qui n'a été ni payé, ni réglé en valeur ni compensé entre le sous-acquéreur et le débiteur à la date du jugement ouvrant la procédure collective de ce dernier, tend seulement à rendre opposable à cette procédure le report du droit de propriété du vendeur initial sur la créance du prix de revente. Il s'ensuit que l'autorité de la chose jugée attachée à la décision statuant sur cette revendication ne prive pas l'affactureur, se prétendant subrogé dans les droits du débiteur au titre de la créance du prix de revente, de la possibilité de faire trancher, en vue d'obtenir à son profit le paiement de cette créance, le conflit qui l'oppose au vendeur bénéficiaire de la clause de réserve de propriété, la décision s'étant prononcée sur la revendication de celui-ci n'ayant pas eu pour objet de résoudre un tel conflit",
+      "themes": [
+        "entreprise en difficulte (loi du 26 juillet 2005)",
+        "redressement judiciaire",
+        "patrimoine",
+        "revendication",
+        "marchandise livrée au débiteur",
+        "revente par celui-ci",
+        "report du droit de propriété sur la créance du débiteur à l'égard du sous-acquéreur",
+        "conflit avec l'affactureur subrogé dans les droits du débiteur",
+        "décision statuant sur la revendication",
+        "autorité de la chose jugée",
+        "portée",
+        "détermination"
+      ],
+      "files": [],
+      "titlesAndSummaries": [
+        {
+          "titles": [
+            "ENTREPRISE EN DIFFICULTE (loi du 26 juillet 2005)",
+            "Redressement judiciaire",
+            "Patrimoine",
+            "Revendication",
+            "Marchandise livrée au débiteur",
+            "Revente par celui-ci",
+            "Report du droit de propriété sur la créance du débiteur à l'égard du sous-acquéreur",
+            "Conflit avec l'affactureur subrogé dans les droits du débiteur",
+            "Décision statuant sur la revendication",
+            "Autorité de la chose jugée",
+            "Portée",
+            "Détermination"
+          ],
+          "summary": "Selon l'article 2372 du code civil, le droit de propriété d'un bien retenu à titre de garantie par l'effet d'une clause de réserve de propriété se reporte sur la créance du débiteur à l'égard du sous-acquéreur. Il résulte de l'article L. 624-18 du code de commerce que la revendication qu'il permet du prix ou de la partie du prix des biens vendus avec réserve de propriété, qui n'a été ni payé, ni réglé en valeur ni compensé entre le sous-acquéreur et le débiteur à la date du jugement ouvrant la procédure collective de ce dernier, tend seulement à rendre opposable à cette procédure le report du droit de propriété du vendeur initial sur la créance du prix de revente. Il s'ensuit que l'autorité de la chose jugée attachée à la décision statuant sur cette revendication ne prive pas l'affactureur, se prétendant subrogé dans les droits du débiteur au titre de la créance du prix de revente, de la possibilité de faire trancher, en vue d'obtenir à son profit le paiement de cette créance, le conflit qui l'oppose au vendeur bénéficiaire de la clause de réserve de propriété, la décision s'étant prononcée sur la revendication de celui-ci n'ayant pas eu pour objet de résoudre un tel conflit",
+          "secondaryTitles": [
+            [
+              "SUBROGATION",
+              "Subrogation conventionnelle",
+              "Subrogation consentie par le créancier",
+              "Affacturage",
+              "Société d'affacturage subrogée dans les droits d'un acquéreur",
+              "Conflit avec un vendeur bénéficiaire d'une clause de réserve de propriété"
+            ]
+          ]
+        }
+      ],
+      "particularInterest": false
+    }
+  ],
+  "relaxed": false,
+  "searchQuery": "{\"index\":\"judilibre_0\",\"preference\":\"preventbouncingresults\",\"explain\":false,\"from\":0,\"size\":5,\"_source\":true,\"body\":{\"track_scores\":true,\"query\":{\"function_score\":{\"query\":{\"bool\":{\"filter\":[{\"terms\":{\"jurisdiction\":[\"cc\"]}},{\"range\":{\"decision_date\":{\"gte\":\"2020-01-01\",\"lte\":\"2023-12-31\"}}}],\"must\":{\"simple_query_string\":{\"query\":\"propriété\",\"fields\":[\"text\"],\"default_operator\":\"OR\",\"auto_generate_synonyms_phrase_query\":true,\"fuzzy_max_expansions\":50,\"fuzzy_transpositions\":true}}}},\"boost\":5,\"functions\":[{\"filter\":{\"match\":{\"publication\":\"b\"}},\"weight\":50},{\"filter\":{\"match\":{\"publication\":\"r\"}},\"weight\":10},{\"filter\":{\"match\":{\"publication\":\"c\"}},\"weight\":5},{\"filter\":{\"match\":{\"publication\":\"l\"}},\"weight\":2},{\"filter\":{\"match\":{\"publication\":\"n\"}},\"weight\":0.1},{\"filter\":{\"match\":{\"lowInterest\":true}},\"weight\":0.1},{\"filter\":{\"match\":{\"jurisdiction\":\"ca\"}},\"weight\":0.1},{\"filter\":{\"match\":{\"jurisdiction\":\"tj\"}},\"weight\":0.1},{\"filter\":{\"match\":{\"jurisdiction\":\"tcom\"}},\"weight\":0.1}],\"score_mode\":\"max\",\"boost_mode\":\"multiply\"}},\"sort\":[{\"_score\":\"desc\"},{\"decision_date\":\"desc\"}],\"highlight\":{\"fields\":{\"text\":{}}}}}",
+  "date": "2025-04-12T10:54:19.694Z"
+}

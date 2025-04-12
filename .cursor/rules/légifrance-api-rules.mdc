@@ -1,0 +1,16 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+
+# Your rule content
+
+- description des tris et filtres de l'api légifrance dans ce fichier:
+    @docs/official_documents/Légifrance/description-des-tris-et-filtres-de-l-api.xlsx
+- exemples d'utilisation de l'api légifrance dans ce fichier:
+    @docs/official_documents/Légifrance/exemples-d-utilisation-de-l-api.docx
+- Documenatation swagger 2.0 in this file:
+    @docs/official_documents/Légifrance/Légifrance.json
+
+

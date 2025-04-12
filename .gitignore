@@ -24,6 +24,7 @@ MANIFEST
 # Environment
 .env
 .env.*
+.env.example
 .venv
 env/
 venv/

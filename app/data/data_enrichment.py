@@ -46,9 +46,11 @@ class DataEnrichment:
             
             # Initialiser le résumeur automatique
             logger.info("Initialisation du résumeur automatique")
+            summarizer_model = os.getenv("SUMMARIZER_MODEL", "pltrdy/tf2-t5-base-fr")
+            logger.info(f"Utilisation du modèle de résumé: {summarizer_model}")
             self.summarizer = pipeline(
                 "summarization", 
-                model=os.getenv("SUMMARIZER_MODEL", "ccdv/legalbert-base-fr"),
+                model=summarizer_model,
                 device=-1
             )
             

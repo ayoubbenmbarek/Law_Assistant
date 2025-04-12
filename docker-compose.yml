@@ -24,7 +24,7 @@ services:
       - legal-assistant-network
     environment:
       - VECTOR_DB_TYPE=qdrant
-      - QDRANT_URL=http://qdrant:6333
+      - QDRANT_URL=http://qdrant:6339
       - QDRANT_API_KEY=${QDRANT_API_KEY}
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8009/health"]

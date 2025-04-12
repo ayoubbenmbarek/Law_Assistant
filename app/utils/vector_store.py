@@ -1,7 +1,7 @@
 import os
 import importlib.util
 import sys
-import weaviate
+# import weaviate
 import qdrant_client
 from qdrant_client.http import models
 from typing import List, Dict, Any, Optional
@@ -16,7 +16,7 @@ VECTOR_DB_TYPE = os.getenv("VECTOR_DB_TYPE", "qdrant").lower()  # Qdrant par dé
 # Utiliser les noms des services Docker pour la connexion interne
 WEAVIATE_URL = os.getenv("WEAVIATE_URL", "http://weaviate:8080")
 WEAVIATE_API_KEY = os.getenv("WEAVIATE_API_KEY")
-QDRANT_URL = os.getenv("QDRANT_URL", "http://host.docker.internal:6339")
+QDRANT_URL = os.getenv("QDRANT_URL", "http://localhost:6339")
 QDRANT_API_KEY = os.getenv("QDRANT_API_KEY")
 
 # Embedding model configuration
@@ -329,12 +329,18 @@ class VectorStore:
                     pass
                 
                 # Perform vector search
-                search_result = self.client.search(
-                    collection_name=LEGAL_TEXTS_COLLECTION,
-                    query_vector=query_embedding,
-                    limit=limit,
-                    filter=filter_obj
-                )
+                search_params = {
+                    "collection_name": LEGAL_TEXTS_COLLECTION,
+                    "query_vector": query_embedding,
+                    "limit": limit,
+                }
+                
+                # Only add filter if it's defined
+                if filter_obj:
+                    search_params["filter"] = filter_obj
+                
+                # Perform vector search with corrected params
+                search_result = self.client.search(**search_params)
                 
                 # Format results
                 for scored_point in search_result:

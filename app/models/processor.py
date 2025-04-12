@@ -314,12 +314,25 @@ class QueryProcessor:
                 logger.warning("Clé API OpenAI non configurée. Génération d'une réponse basique.")
                 
                 # Format simple en utilisant les sources directement
-                sources_content = [s["content"] for s in sources]
-                sources_titles = [s["title"] for s in sources]
+                sources_content = [s.get("content", "") for s in sources if isinstance(s, dict)]
+                
+                # Assurez-vous que sources_titles est toujours une liste de chaînes
+                sources_titles = []
+                for s in sources:
+                    if isinstance(s, dict):
+                        title = s.get("title", "")
+                        if title:
+                            sources_titles.append(title)
+                    elif isinstance(s, str):
+                        sources_titles.append(s)
+                
+                # Si pas de sources, ajouter une source par défaut
+                if not sources_titles:
+                    sources_titles = ["Aucune source spécifique n'a été trouvée"]
                 
                 response = LegalResponse(
                     introduction=f"Votre question concerne le domaine du droit {analysis.get('domain', 'non spécifié')}.",
-                    legal_framework=f"Selon les sources juridiques disponibles: {'. '.join(sources_content[:2])}",
+                    legal_framework=f"Selon les sources juridiques disponibles: {'. '.join(sources_content[:2]) if sources_content else 'Aucune information spécifique disponible.'}",
                     application="L'application à votre cas spécifique nécessite une analyse détaillée par un professionnel.",
                     exceptions="Des exceptions peuvent s'appliquer selon les circonstances particulières.",
                     recommendations=[

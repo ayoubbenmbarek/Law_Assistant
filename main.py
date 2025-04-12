@@ -113,7 +113,7 @@ async def startup_event():
     
     # Configuration utilisée
     logger.info(f"VECTOR_DB_TYPE: {os.getenv('VECTOR_DB_TYPE', 'qdrant')}")
-    logger.info(f"QDRANT_URL: {os.getenv('QDRANT_URL', 'http://qdrant:6339')}")
+    logger.info(f"QDRANT_URL: {os.getenv('QDRANT_URL', 'http://localhost:6339')}")
     logger.info(f"QDRANT_API_KEY: {'[SET]' if os.getenv('QDRANT_API_KEY') else '[NOT SET]'}")
     
     # Initialisation de la base de données

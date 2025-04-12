@@ -28,6 +28,9 @@ const LegalResponse = ({ response, onGeneratePdf }) => {
     disclaimer
   } = response;
 
+  // Vérifier si les sources sont des objets ou des chaînes de caractères
+  const isSourcesObjects = sources && sources.length > 0 && typeof sources[0] === 'object';
+
   const handlePrint = () => {
     window.print();
   };
@@ -140,15 +143,17 @@ const LegalResponse = ({ response, onGeneratePdf }) => {
       <section className="mb-6">
         <div className="flex justify-between items-center mb-2">
           <h3 className="text-xl font-semibold text-gray-700">Sources</h3>
-          <button 
-            onClick={() => setShowSources(!showSources)} 
-            className="text-sm text-indigo-600 hover:text-indigo-800 print:hidden"
-          >
-            {showSources ? 'Masquer les détails' : 'Afficher les détails'}
-          </button>
+          {isSourcesObjects && (
+            <button 
+              onClick={() => setShowSources(!showSources)} 
+              className="text-sm text-indigo-600 hover:text-indigo-800 print:hidden"
+            >
+              {showSources ? 'Masquer les détails' : 'Afficher les détails'}
+            </button>
+          )}
         </div>
         
-        {showSources ? (
+        {isSourcesObjects && showSources ? (
           <SourceList 
             sources={sources} 
             onSourceSelect={setSelectedSourceId}
@@ -158,14 +163,20 @@ const LegalResponse = ({ response, onGeneratePdf }) => {
           <ul className="list-disc list-inside text-gray-700 space-y-1 pl-4">
             {sources.map((source, index) => (
               <li key={index} className="mb-1 flex items-start">
-                <span className="flex-1">{source.title} ({source.type})</span>
-                <button 
-                  onClick={() => setSelectedSourceId(source.id)}
-                  className="ml-2 text-indigo-600 hover:text-indigo-800 print:hidden"
-                  title="Voir les détails"
-                >
-                  <FaInfoCircle size={14} />
-                </button>
+                {isSourcesObjects ? (
+                  <>
+                    <span className="flex-1">{source.title} ({source.type})</span>
+                    <button 
+                      onClick={() => setSelectedSourceId(source.id)}
+                      className="ml-2 text-indigo-600 hover:text-indigo-800 print:hidden"
+                      title="Voir les détails"
+                    >
+                      <FaInfoCircle size={14} />
+                    </button>
+                  </>
+                ) : (
+                  <span className="flex-1">{source}</span>
+                )}
               </li>
             ))}
           </ul>

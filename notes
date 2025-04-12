@@ -1,0 +1,39 @@
+run imports:
+
+
+docker-compose exec etl python -m app.admin.import_doc_by_id travail1
+
+docker-compose exec etl python -m app.admin.test_search "contrat"
+
+todo use mistral ai for embedding, check plan de projet file
+
+gestion des habilitations, declarer autoenprerneur à la palce du quelq'un example
+
+./piste_subscription_guide.py guide pour souscrie aux api
+
+
+
+todo:
+Pour votre projet d'assistant juridique, je recommande de vous concentrer sur les API suivantes qui seront les plus utiles :
+API Légifrance - C'est l'API la plus importante pour votre projet car elle vous donne accès à :
+Les codes en vigueur (Code civil, Code du travail, etc.)
+La jurisprudence (décisions de justice importantes)
+Les textes législatifs et réglementaires
+API DILA Explorable - Complémentaire à Légifrance, elle offre des fonctionnalités de recherche avancées dans les textes juridiques.
+Pour faire une demande d'accès :
+Connectez-vous à votre compte PISTE
+Allez sur DataPass (https://datapass.api.gouv.fr/dila/legifrance)
+Remplissez le formulaire en précisant :
+L'objectif de votre assistant juridique
+Les fonctionnalités que vous prévoyez (recherche dans les codes, la jurisprudence)
+La nature du service (application web, assistant IA)
+En attendant que votre demande soit traitée, vous pouvez utiliser le script open_legal_data.py 
+que nous avons créé pour télécharger des données juridiques open source depuis data.gouv.fr qui 
+contiennent beaucoup des mêmes informations, mais dans un format moins pratique (fichiers XML).
+Souhaitez-vous que je vous aide à rédiger le formulaire de demande d'accès à l'API Légifrance
+ avec les éléments spécifiques à mettre en avant pour optimiser vos chances d'obtenir rapidement un accès ?
+
+
+TODO later:
+https://datapass.api.gouv.fr/data-providers/api
+API Tierce Déclaration auto-entrepreneur
