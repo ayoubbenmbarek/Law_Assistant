@@ -1,0 +1,49 @@
+{
+    "total_imported": 0,
+    "start_time": "2025-04-15T21:40:16.974496",
+    "sources_stats": {
+        "legifrance": {
+            "name": "Légifrance API",
+            "documents_imported": 0,
+            "methods": {
+                "import_codes": {
+                    "documents_imported": 0,
+                    "start_time": "2025-04-15T21:40:16.974520",
+                    "end_time": "2025-04-15T21:40:18.111251",
+                    "duration_seconds": 1.136731
+                },
+                "import_jurisprudence": {
+                    "documents_imported": 0,
+                    "start_time": "2025-04-15T21:40:18.111296",
+                    "end_time": "2025-04-15T21:40:19.450543",
+                    "duration_seconds": 1.339247
+                }
+            }
+        },
+        "eurlex": {
+            "name": "EUR-Lex API",
+            "documents_imported": 0,
+            "methods": {}
+        },
+        "conseil_constitutionnel": {
+            "name": "Conseil Constitutionnel API",
+            "documents_imported": 0,
+            "methods": {}
+        },
+        "web_sources": {
+            "name": "Sources Web (ETL)",
+            "documents_imported": 0,
+            "methods": {
+                "run_extraction": {
+                    "documents_imported": 0,
+                    "start_time": "2025-04-15T21:40:19.450855",
+                    "end_time": "2025-04-15T21:40:26.294855",
+                    "duration_seconds": 6.844
+                }
+            }
+        }
+    },
+    "error_count": 0,
+    "end_time": "2025-04-15T21:40:26.294883",
+    "duration_seconds": 9.320387
+}

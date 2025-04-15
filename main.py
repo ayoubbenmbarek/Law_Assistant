@@ -156,4 +156,4 @@ if __name__ == "__main__":
     port = int(os.getenv("APP_PORT", 8009))
     host = os.getenv("APP_HOST", "0.0.0.0")
     logger.info(f"Démarrage du serveur sur {host}:{port}")
-    uvicorn.run("main:app", host=host, port=port, reload=True) 
+    uvicorn.run("main:app", host=host, port=port, reload=True)

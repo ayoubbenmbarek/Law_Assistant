@@ -1,0 +1,26 @@
+[
+    {
+        "id": "cass-23-10456",
+        "title": "Arrêt n°456 du 12 mai 2023 (21-15.742) - Cour de cassation - Chambre sociale",
+        "content": "LA COUR DE CASSATION, CHAMBRE SOCIALE, a rendu l'arrêt suivant : Sur le moyen unique, pris en ses deux dernières branches : Vu les articles L. 1224-1, L. 1224-2 et L. 1226-6 du code du travail...",
+        "date": "2023-05-12",
+        "url": "https://www.courdecassation.fr/decision/2023-05-12_21-15.742",
+        "metadata": {
+            "juridiction": "Chambre sociale",
+            "numero_pourvoi": "21-15.742",
+            "solution": "Cassation"
+        }
+    },
+    {
+        "id": "cass-23-12789",
+        "title": "Arrêt n°789 du 28 juin 2023 (22-18.123) - Cour de cassation - Première chambre civile",
+        "content": "LA COUR DE CASSATION, PREMIÈRE CHAMBRE CIVILE, a rendu l'arrêt suivant : Sur le moyen unique : Vu les articles 1103 et 1193 du code civil...",
+        "date": "2023-06-28",
+        "url": "https://www.courdecassation.fr/decision/2023-06-28_22-18.123",
+        "metadata": {
+            "juridiction": "Première chambre civile",
+            "numero_pourvoi": "22-18.123",
+            "solution": "Rejet"
+        }
+    }
+]

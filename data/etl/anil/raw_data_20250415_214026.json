@@ -1,0 +1,32 @@
+[
+    {
+        "id": "anil-2023-42",
+        "title": "Cour d'appel de Paris, Pôle 4 - Chambre 3, 3 mars 2023",
+        "content": "Dans cette affaire, la cour juge que le délai de rétractation applicable aux contrats conclus hors établissement s'applique au contrat de dépannage conclu à domicile, y compris lorsque le consommateur a sollicité expressément la venue du professionnel...",
+        "date": "2023-03-03",
+        "url": "https://www.anil.org/jurisprudence/ca-paris-2023-03-03",
+        "metadata": {
+            "juridiction": "Cour d'appel de Paris",
+            "thematique": "Protection du consommateur",
+            "mots_cles": [
+                "Dépannage à domicile",
+                "Droit de rétractation"
+            ]
+        }
+    },
+    {
+        "id": "anil-2023-56",
+        "title": "Cour de cassation, 3ème chambre civile, 27 avril 2023",
+        "content": "Dans cet arrêt, la Cour de cassation précise que le bailleur doit justifier de la réalisation des diagnostics techniques obligatoires au moment de la signature du bail, et qu'à défaut, le locataire peut demander une diminution du loyer...",
+        "date": "2023-04-27",
+        "url": "https://www.anil.org/jurisprudence/cass-civ3-2023-04-27",
+        "metadata": {
+            "juridiction": "Cour de cassation, 3ème chambre civile",
+            "thematique": "Bail d'habitation",
+            "mots_cles": [
+                "Diagnostics techniques",
+                "Diminution du loyer"
+            ]
+        }
+    }
+]

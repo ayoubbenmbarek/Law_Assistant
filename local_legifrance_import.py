@@ -20,6 +20,7 @@ load_dotenv()
 LEGIFRANCE_API_KEY = os.getenv("PISTE_API_KEY", "8687ddca-33a7-47d3-a5b7-970b71a6af92")
 LEGIFRANCE_API_SECRET = os.getenv("PISTE_SECRET_KEY", "bb6476dd-7e31-4e8f-800b-d0e4ed3a9df2")
 LEGIFRANCE_API_BASE_URL = "https://api.piste.gouv.fr/dila/legifrance/lf-engine-app"
+LEGIFRANCE_API_SANDBOX_URL = "https://sandbox-api.piste.gouv.fr/dila/legifrance/lf-engine-app"
 LEGIFRANCE_AUTH_URL = "https://sandbox-oauth.piste.gouv.fr/api/oauth/token"
 
 # Répertoire de sortie pour les fichiers JSON
@@ -77,9 +78,10 @@ def search_codes(token, query="travail", limit=10, page=1):
     """Recherche dans les codes (Code Civil, Code du Travail, etc.)"""
     response = None
     try:
-        endpoint = f"{LEGIFRANCE_API_BASE_URL}/consult/code"
+        endpoint = f"{LEGIFRANCE_API_SANDBOX_URL}/search"
         
         payload = {
+            "fond": "CODE_DATE",
             "recherche": {
                 "champ": query,
                 "pageNumber": page,
@@ -111,9 +113,10 @@ def search_jurisprudence(token, query="travail", limit=10, page=1):
     """Recherche dans la jurisprudence"""
     response = None
     try:
-        endpoint = f"{LEGIFRANCE_API_BASE_URL}/consult/juri"
+        endpoint = f"{LEGIFRANCE_API_SANDBOX_URL}/search"
         
         payload = {
+            "fond": "JURI",
             "recherche": {
                 "champ": query,
                 "pageNumber": page,

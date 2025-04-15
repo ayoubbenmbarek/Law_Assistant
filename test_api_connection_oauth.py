@@ -83,7 +83,7 @@ async def test_judilibre(token):
         params = {
             "query": "propriété",
             "date_start": "2020-01-01",
-            "date_end": "2023-12-31",
+            "date_end": "2025-12-31",
             "page_size": 5
         }
         

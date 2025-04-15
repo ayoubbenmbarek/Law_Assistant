@@ -3,8 +3,10 @@ import asyncio
 import schedule
 import time
 import datetime
+import uuid
+import hashlib
 from loguru import logger
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any, Optional, Tuple
 from dotenv import load_dotenv
 import aiohttp
 from bs4 import BeautifulSoup
@@ -12,11 +14,20 @@ import concurrent.futures
 import json
 import csv
 from pathlib import Path
+import nltk
+from nltk.tokenize import sent_tokenize
+from tqdm import tqdm
 
 from app.utils.vector_store import vector_store
-from app.data.legifrance_api import legifrance_api
+from app.data.legifrance_api import legifrance_api, LegifranceAPI
 from app.data.eurlex_api import eurlex_api
 from app.data.conseil_constitutionnel_api import conseil_constitutionnel_api
+
+# Téléchargement des ressources NLTK nécessaires (si pas déjà installées)
+try:
+    nltk.data.find('tokenizers/punkt')
+except LookupError:
+    nltk.download('punkt')
 
 # Load environment variables
 load_dotenv()
@@ -25,6 +36,114 @@ load_dotenv()
 ETL_SCHEDULE = os.getenv("ETL_SCHEDULE", "0 0 * * *")  # CRON format, default: daily at midnight
 ETL_DATA_PATH = os.getenv("ETL_DATA_PATH", "./data/etl")
 ETL_BATCH_SIZE = int(os.getenv("ETL_BATCH_SIZE", "100"))
+CHUNK_SIZE = 1000  # Taille approximative des chunks en caractères
+CHUNK_OVERLAP = 200  # Chevauchement entre les chunks
+MAX_RESULTS_PER_QUERY = 50  # Nombre maximum de résultats par requête API
+EXTRACTION_DELAY = 1  # Délai en secondes entre les requêtes API pour éviter le rate limiting
+
+# Domaines juridiques à explorer
+LEGAL_DOMAINS = {
+    "codes": [
+        "civil", "pénal", "travail", "commerce", "consommation", 
+        "environnement", "santé", "éducation", "fiscalité", "urbanisme",
+        "propriété intellectuelle", "assurance", "procédure civile", 
+        "procédure pénale", "sécurité sociale", "famille"
+    ],
+    "jurisprudence": [
+        "cassation", "conseil d'état", "tribunal", "cour d'appel", 
+        "licenciement", "contrat", "responsabilité", "préjudice",
+        "succession", "bail", "mariage", "divorce", "société", 
+        "vente", "assurance", "crédit", "impôt", "faute"
+    ],
+    "legislation": [
+        "loi", "décret", "arrêté", "ordonnance", "constitution",
+        "droits fondamentaux", "administration", "service public",
+        "entreprise", "données personnelles", "travailleur", "employeur",
+        "consommateur", "environnement", "développement durable"
+    ]
+}
+
+# Sous-domaines et concepts spécifiques
+LEGAL_CONCEPTS = {
+    "civil": ["contrat", "obligation", "responsabilité", "propriété", "servitude", "usufruit", "succession"],
+    "travail": ["licenciement", "rupture conventionnelle", "congé", "salaire", "convention collective", "négociation"],
+    "famille": ["mariage", "divorce", "adoption", "autorité parentale", "pension alimentaire", "succession"],
+    "penal": ["infraction", "délit", "crime", "peine", "récidive", "prescription", "procédure"],
+    "immobilier": ["bail", "copropriété", "servitude", "hypothèque", "crédit immobilier", "construction"],
+    "affaires": ["société", "fusion", "cession", "concurrence", "distribution", "propriété intellectuelle"]
+}
+
+def chunk_text(text: str, title: str = "", id_prefix: str = "") -> List[Dict[str, Any]]:
+    """
+    Découpe un texte juridique en chunks de taille appropriée avec chevauchement
+    
+    Args:
+        text: Texte à découper
+        title: Titre du document
+        id_prefix: Préfixe pour les IDs des chunks
+        
+    Returns:
+        Liste de chunks avec métadonnées
+    """
+    if not text:
+        return []
+    
+    # Utilisation de NLTK pour découper en phrases
+    sentences = sent_tokenize(text)
+    
+    chunks = []
+    current_chunk = []
+    current_size = 0
+    
+    for sentence in sentences:
+        sentence_size = len(sentence)
+        
+        # Si l'ajout de cette phrase dépasse la taille maximale et qu'on a déjà du contenu
+        if current_size + sentence_size > CHUNK_SIZE and current_chunk:
+            # Créer un chunk avec le contenu accumulé
+            chunk_text = " ".join(current_chunk)
+            chunk_id = f"{id_prefix}_{len(chunks)}" if id_prefix else f"chunk_{uuid.uuid4().hex[:8]}"
+            
+            chunks.append({
+                "id": chunk_id,
+                "text": chunk_text,
+                "title": title,
+                "size": current_size
+            })
+            
+            # Garder les dernières phrases pour le chevauchement
+            overlap_size = 0
+            overlap_chunks = []
+            
+            # Parcourir les phrases en sens inverse jusqu'à atteindre le chevauchement souhaité
+            for s in reversed(current_chunk):
+                if overlap_size < CHUNK_OVERLAP:
+                    overlap_chunks.insert(0, s)
+                    overlap_size += len(s)
+                else:
+                    break
+            
+            # Réinitialiser avec le chevauchement
+            current_chunk = overlap_chunks
+            current_size = overlap_size
+        
+        # Ajouter la phrase au chunk actuel
+        current_chunk.append(sentence)
+        current_size += sentence_size
+    
+    # Ajouter le dernier chunk s'il contient du texte
+    if current_chunk:
+        chunk_text = " ".join(current_chunk)
+        chunk_id = f"{id_prefix}_{len(chunks)}" if id_prefix else f"chunk_{uuid.uuid4().hex[:8]}"
+        
+        chunks.append({
+            "id": chunk_id,
+            "text": chunk_text,
+            "title": title,
+            "size": current_size
+        })
+    
+    return chunks
 
 class ETLManager:
     """
@@ -38,6 +157,18 @@ class ETLManager:
         
         # Source configurations
         self.sources = {
+            "legifrance_codes": {
+                "name": "Légifrance Codes",
+                "type": "code",
+                "extraction_method": self._extract_legifrance_codes,
+                "frequency": "monthly"
+            },
+            "legifrance_jurisprudence": {
+                "name": "Légifrance Jurisprudence",
+                "type": "jurisprudence",
+                "extraction_method": self._extract_legifrance_jurisprudence,
+                "frequency": "weekly"
+            },
             "bofip": {
                 "name": "Bulletin Officiel des Finances Publiques",
                 "url": "https://bofip.impots.gouv.fr/bofip/ext/opendata/export",
@@ -72,6 +203,14 @@ class ETLManager:
                 "type": "jurisprudence_logement",
                 "extraction_method": self._extract_anil,
                 "frequency": "monthly"
+            },
+            "legifrance_tables": {
+                "extraction_method": self._extract_legifrance_tables,
+                "enabled": True,
+                "params": {
+                    "start_year": 2020,
+                    "end_year": 2023
+                }
             }
         }
         
@@ -116,7 +255,7 @@ class ETLManager:
         Transformer et charger les documents dans la base vectorielle
         
         Args:
-            documents: Liste des documents extraits
+            documents: Liste des documents extraits (ou chunks pour les sources Légifrance)
             source_id: Identifiant de la source
         """
         if not documents:
@@ -127,48 +266,88 @@ class ETLManager:
             # Sauvegarder les documents bruts
             self._save_raw_data(documents, source_id)
             
-            # Transformations spécifiques selon la source
-            transformed_docs = []
+            # Vérifier si nous traitons déjà des chunks (sources Légifrance)
+            is_chunked_source = source_id in ["legifrance_codes", "legifrance_jurisprudence"]
             
-            for doc in documents:
-                # Structure commune pour tous les documents
-                transformed_doc = {
-                    "id": f"{source_id.upper()}-{doc.get('id', '')}",
-                    "title": doc.get("title", ""),
-                    "type": self.sources[source_id]["type"],
-                    "content": doc.get("content", ""),
-                    "date": doc.get("date", datetime.datetime.now().strftime("%Y-%m-%d")),
-                    "url": doc.get("url", ""),
-                    "metadata": {
-                        "source": self.sources[source_id]["name"],
-                        **doc.get("metadata", {})
+            if is_chunked_source:
+                # Les documents sont déjà des chunks optimisés pour la vectorisation
+                chunks = documents
+                logger.info(f"Source {source_id} : Utilisation de {len(chunks)} chunks pré-traités")
+                
+                # Traitement par lots pour éviter de surcharger la base vectorielle
+                batch_size = ETL_BATCH_SIZE
+                for i in range(0, len(chunks), batch_size):
+                    batch = chunks[i:i+batch_size]
+                    
+                    # Ajouter le lot à la base vectorielle
+                    for chunk in batch:
+                        # Générer un ID unique pour le vecteur
+                        chunk_id = chunk["id"]
+                        # Utiliser un hachage MD5 et s'assurer d'avoir un entier positif
+                        hash_obj = hashlib.md5(chunk_id.encode())
+                        numeric_id = abs(int(hash_obj.hexdigest(), 16) % (2**31 - 1))
+                        
+                        vector_store.add_document(
+                            doc_id=chunk_id,
+                            title=chunk["title"],
+                            content=chunk["text"],
+                            doc_type=chunk["metadata"].get("type", "unknown"),
+                            date=chunk["metadata"].get("date", datetime.datetime.now().strftime("%Y-%m-%d")),
+                            url=chunk["metadata"].get("url", ""),
+                            metadata=chunk["metadata"],
+                            numeric_id=numeric_id
+                        )
+                    
+                    logger.info(f"Lot {i//batch_size + 1} importé dans la base vectorielle ({len(batch)} chunks)")
+                    # Petite pause pour éviter de surcharger le système
+                    await asyncio.sleep(0.1)
+                    
+                logger.info(f"ETL terminé pour {source_id}: {len(chunks)} chunks traités")
+                
+            else:
+                # Méthode traditionnelle pour les autres sources - traitement document par document
+                transformed_docs = []
+                
+                for doc in documents:
+                    # Structure commune pour tous les documents
+                    transformed_doc = {
+                        "id": f"{source_id.upper()}-{doc.get('id', '')}",
+                        "title": doc.get("title", ""),
+                        "type": self.sources[source_id]["type"],
+                        "content": doc.get("content", ""),
+                        "date": doc.get("date", datetime.datetime.now().strftime("%Y-%m-%d")),
+                        "url": doc.get("url", ""),
+                        "metadata": {
+                            "source": self.sources[source_id]["name"],
+                            **doc.get("metadata", {})
+                        }
                     }
-                }
-                transformed_docs.append(transformed_doc)
-                
-            # Traitement par lots pour éviter de surcharger la base vectorielle
-            batch_size = ETL_BATCH_SIZE
-            for i in range(0, len(transformed_docs), batch_size):
-                batch = transformed_docs[i:i+batch_size]
-                
-                # Ajouter le lot à la base vectorielle
-                for doc in batch:
-                    vector_store.add_document(
-                        doc_id=doc["id"],
-                        title=doc["title"],
-                        content=doc["content"],
-                        doc_type=doc["type"],
-                        date=doc["date"],
-                        url=doc["url"],
-                        metadata=doc["metadata"]
-                    )
-                
-                logger.info(f"Lot {i//batch_size + 1} importé dans la base vectorielle ({len(batch)} documents)")
-                
-            logger.info(f"ETL terminé pour {source_id}: {len(transformed_docs)} documents traités")
+                    transformed_docs.append(transformed_doc)
+                    
+                # Traitement par lots pour éviter de surcharger la base vectorielle
+                batch_size = ETL_BATCH_SIZE
+                for i in range(0, len(transformed_docs), batch_size):
+                    batch = transformed_docs[i:i+batch_size]
+                    
+                    # Ajouter le lot à la base vectorielle
+                    for doc in batch:
+                        vector_store.add_document(
+                            doc_id=doc["id"],
+                            title=doc["title"],
+                            content=doc["content"],
+                            doc_type=doc["type"],
+                            date=doc["date"],
+                            url=doc["url"],
+                            metadata=doc["metadata"]
+                        )
+                    
+                    logger.info(f"Lot {i//batch_size + 1} importé dans la base vectorielle ({len(batch)} documents)")
+                    
+                logger.info(f"ETL terminé pour {source_id}: {len(transformed_docs)} documents traités")
             
         except Exception as e:
             logger.error(f"Erreur lors de la transformation/chargement pour {source_id}: {str(e)}")
+            logger.exception(e)
     
     def _save_raw_data(self, documents: List[Dict[str, Any]], source_id: str):
         """
@@ -512,5 +691,344 @@ class ETLManager:
         # Pour une application réelle, utilisez Airflow, Celery ou un autre outil de planification robuste
         logger.info("Tâches ETL planifiées")
 
+    async def _extract_legifrance_codes(self) -> List[Dict[str, Any]]:
+        """
+        Extraction des codes juridiques via l'API Légifrance avec chunking efficace
+        
+        Returns:
+            Liste de chunks de textes juridiques avec métadonnées
+        """
+        logger.info("Début de l'extraction des codes juridiques via l'API Légifrance")
+        
+        # Termes de recherche pour les codes juridiques
+        code_terms = LEGAL_DOMAINS["codes"] + list(LEGAL_CONCEPTS.keys())
+        total_chunks = []
+        total_documents = 0
+        
+        for term in tqdm(code_terms, desc="Extraction des codes"):
+            try:
+                # Extraction depuis l'API Légifrance
+                response = await legifrance_api.search_codes(query=term, page=1, page_size=MAX_RESULTS_PER_QUERY)
+                
+                if not response or "results" not in response:
+                    logger.warning(f"Aucun résultat trouvé pour le terme '{term}' dans les codes")
+                    continue
+                    
+                results = response.get("results", [])
+                logger.info(f"Trouvé {len(results)} articles de code pour le terme '{term}'")
+                
+                for item in results:
+                    doc_id = item.get("id", "")
+                    title = item.get("title", "")
+                    content = item.get("content", "")
+                    doc_type = item.get("type", "code")
+                    date = item.get("date", datetime.datetime.now().strftime("%Y-%m-%d"))
+                    url = item.get("url", "")
+                    metadata = item.get("metadata", {})
+                    
+                    # Si le contenu est manquant, passer à l'élément suivant
+                    if not content:
+                        continue
+                    
+                    # Découpage du texte en chunks
+                    document_chunks = chunk_text(
+                        text=content,
+                        title=title,
+                        id_prefix=doc_id
+                    )
+                    
+                    # Enrichissement des métadonnées pour chaque chunk
+                    for i, chunk in enumerate(document_chunks):
+                        chunk_metadata = {
+                            "original_id": doc_id,
+                            "chunk_index": i,
+                            "total_chunks": len(document_chunks),
+                            "type": doc_type,
+                            "domain": "code",
+                            "subdomain": metadata.get("code", "").lower() if metadata.get("code") else "",
+                            "date": date,
+                            "url": url,
+                            "search_term": term
+                        }
+                        
+                        # Ajouter les métadonnées spécifiques au code
+                        if metadata:
+                            chunk_metadata.update({
+                                "code_name": metadata.get("code", ""),
+                                "section": metadata.get("section", ""),
+                            })
+                        
+                        chunk["metadata"] = chunk_metadata
+                        total_chunks.append(chunk)
+                    
+                    total_documents += 1
+                
+                # Pause pour éviter le rate limiting
+                await asyncio.sleep(EXTRACTION_DELAY)
+                
+            except Exception as e:
+                logger.error(f"Erreur lors de l'extraction du code pour le terme '{term}': {str(e)}")
+        
+        logger.success(f"Extraction des codes terminée. Total: {total_documents} documents, {len(total_chunks)} chunks")
+        return total_chunks
+    
+    async def _extract_legifrance_jurisprudence(self) -> List[Dict[str, Any]]:
+        """
+        Extraction de jurisprudence via l'API Légifrance avec chunking efficace
+        
+        Returns:
+            Liste de chunks de textes juridiques avec métadonnées
+        """
+        logger.info("Début de l'extraction de jurisprudence via l'API Légifrance")
+        
+        # Termes de recherche pour la jurisprudence
+        jurisprudence_terms = LEGAL_DOMAINS["jurisprudence"]
+        for domain, concepts in LEGAL_CONCEPTS.items():
+            jurisprudence_terms.extend(concepts)
+        
+        total_chunks = []
+        total_documents = 0
+        
+        for term in tqdm(jurisprudence_terms, desc="Extraction de jurisprudence"):
+            try:
+                # Extraction depuis l'API Légifrance
+                response = await legifrance_api.search_jurisprudence(
+                    query=term, 
+                    page=1, 
+                    page_size=MAX_RESULTS_PER_QUERY, 
+                    sort="date desc"
+                )
+                
+                if not response or "results" not in response:
+                    logger.warning(f"Aucun résultat trouvé pour le terme '{term}' dans la jurisprudence")
+                    continue
+                    
+                results = response.get("results", [])
+                logger.info(f"Trouvé {len(results)} décisions de jurisprudence pour le terme '{term}'")
+                
+                for item in results:
+                    doc_id = item.get("id", "")
+                    title = item.get("title", "")
+                    content = item.get("content", "")
+                    doc_type = item.get("type", "jurisprudence")
+                    date = item.get("date", datetime.datetime.now().strftime("%Y-%m-%d"))
+                    url = item.get("url", "")
+                    metadata = item.get("metadata", {})
+                    
+                    # Si le contenu est manquant, passer à l'élément suivant
+                    if not content:
+                        continue
+                    
+                    # Découpage du texte en chunks
+                    document_chunks = chunk_text(
+                        text=content,
+                        title=title,
+                        id_prefix=doc_id
+                    )
+                    
+                    # Enrichissement des métadonnées pour chaque chunk
+                    for i, chunk in enumerate(document_chunks):
+                        chunk_metadata = {
+                            "original_id": doc_id,
+                            "chunk_index": i,
+                            "total_chunks": len(document_chunks),
+                            "type": doc_type,
+                            "domain": "jurisprudence",
+                            "subdomain": metadata.get("juridiction", "").lower() if metadata.get("juridiction") else "",
+                            "date": date,
+                            "url": url,
+                            "search_term": term
+                        }
+                        
+                        # Ajouter les métadonnées spécifiques à la jurisprudence
+                        if metadata:
+                            chunk_metadata.update({
+                                "juridiction": metadata.get("juridiction", ""),
+                                "formation": metadata.get("formation", ""),
+                                "solution": metadata.get("solution", "")
+                            })
+                        
+                        chunk["metadata"] = chunk_metadata
+                        total_chunks.append(chunk)
+                    
+                    total_documents += 1
+                
+                # Pause pour éviter le rate limiting
+                await asyncio.sleep(EXTRACTION_DELAY)
+                
+            except Exception as e:
+                logger.error(f"Erreur lors de l'extraction de jurisprudence pour le terme '{term}': {str(e)}")
+        
+        logger.success(f"Extraction de jurisprudence terminée. Total: {total_documents} documents, {len(total_chunks)} chunks")
+        return total_chunks
+
+    async def run_legifrance_extraction(self, extract_codes: bool = True, extract_jurisprudence: bool = True, custom_terms: List[str] = None):
+        """
+        Exécuter spécifiquement l'extraction des données de Légifrance avec chunking
+        et traitement optimisé
+        
+        Args:
+            extract_codes: Si True, extraire les codes juridiques
+            extract_jurisprudence: Si True, extraire la jurisprudence
+            custom_terms: Liste personnalisée de termes de recherche (facultative)
+        """
+        logger.info("Lancement de l'extraction optimisée des données Légifrance")
+        
+        total_chunks = []
+        
+        try:
+            # Extraction des codes
+            if extract_codes:
+                logger.info("=== Extraction des Codes Juridiques ===")
+                # Utiliser les termes personnalisés ou les termes par défaut
+                code_terms = custom_terms if custom_terms else (LEGAL_DOMAINS["codes"] + list(LEGAL_CONCEPTS.keys()))
+                
+                # Exécuter l'extraction
+                code_chunks = await self._extract_legifrance_codes()
+                
+                if code_chunks:
+                    logger.info(f"Traitement de {len(code_chunks)} chunks de codes")
+                    # Transformer et charger les chunks
+                    await self._transform_and_load(code_chunks, "legifrance_codes")
+                    total_chunks.extend(code_chunks)
+                else:
+                    logger.warning("Aucun chunk de code extrait")
+            
+            # Extraction de la jurisprudence
+            if extract_jurisprudence:
+                logger.info("=== Extraction de la Jurisprudence ===")
+                
+                # Exécuter l'extraction
+                jurisprudence_chunks = await self._extract_legifrance_jurisprudence()
+                
+                if jurisprudence_chunks:
+                    logger.info(f"Traitement de {len(jurisprudence_chunks)} chunks de jurisprudence")
+                    # Transformer et charger les chunks
+                    await self._transform_and_load(jurisprudence_chunks, "legifrance_jurisprudence")
+                    total_chunks.extend(jurisprudence_chunks)
+                else:
+                    logger.warning("Aucun chunk de jurisprudence extrait")
+            
+            # Statistiques finales
+            extraction_info = {
+                "date": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "total_chunks": len(total_chunks),
+                "code_chunks": len([c for c in total_chunks if c.get("metadata", {}).get("domain") == "code"]),
+                "jurisprudence_chunks": len([c for c in total_chunks if c.get("metadata", {}).get("domain") == "jurisprudence"]),
+                "chunk_size": CHUNK_SIZE,
+                "chunk_overlap": CHUNK_OVERLAP
+            }
+            
+            # Sauvegarder les informations dans un fichier JSON
+            stats_file = os.path.join(ETL_DATA_PATH, f"legifrance_extraction_stats_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.json")
+            with open(stats_file, "w", encoding="utf-8") as f:
+                json.dump(extraction_info, f, indent=2, ensure_ascii=False)
+            
+            logger.info(f"Informations d'extraction sauvegardées dans {stats_file}")
+            logger.success(f"Extraction et traitement terminés. Total: {len(total_chunks)} chunks stockés.")
+            
+            return extraction_info
+            
+        except Exception as e:
+            logger.error(f"Erreur lors de l'extraction optimisée de Légifrance: {str(e)}")
+            logger.exception(e)
+            return {"error": str(e)}
+
+    def _extract_legifrance_tables(self, start_year=None, end_year=None):
+        """
+        Extract annual tables from Legifrance API
+        
+        Args:
+            start_year: Starting year (defaults to current year - 1)
+            end_year: Ending year (defaults to current year)
+            
+        Returns:
+            List of extracted documents
+        """
+        # Initialize API client
+        legifrance_api = LegifranceAPI()
+        
+        # Authenticate
+        if not legifrance_api.authenticate():
+            self.logger.error("Failed to authenticate with Legifrance API")
+            return []
+        
+        logger.info("Successfully authenticated with Legifrance API")
+        
+        # Set default year range if not provided
+        current_year = datetime.now().year
+        if not start_year:
+            start_year = current_year - 1
+        if not end_year:
+            end_year = current_year
+        
+        logger.info(f"Extracting tables for years {start_year} to {end_year}")
+        
+        # Prepare request payload
+        request_payload = {
+            "period": {
+                "startYear": start_year,
+                "endYear": end_year
+            }
+        }
+        
+        # Extract data
+        try:
+            response = legifrance_api._make_api_request(
+                method='POST', 
+                endpoint='/consult/getTables', 
+                data=request_payload  # Using data instead of json
+            )
+            
+            # Save raw response for inspection
+            with open('tables_response.json', 'w', encoding='utf-8') as f:
+                json.dump(response, f, ensure_ascii=False, indent=2)
+            
+            logger.info(f"Raw API response saved to tables_response.json")
+            
+            if not response or 'tables' not in response:
+                logger.warning("No tables found in API response")
+                return []
+            
+            tables = response.get('tables', [])
+            logger.info(f"Retrieved {len(tables)} tables")
+            
+            # Transform tables data into documents
+            documents = []
+            for table in tables:
+                table_id = table.get('id', '')
+                title = table.get('title', 'Annual Table')
+                year = table.get('year', '')
+                
+                # Get table content
+                content = table.get('summary', '')
+                if not content and 'sections' in table:
+                    content = " ".join([section.get('title', '') for section in table.get('sections', [])])
+                
+                # Create document structure
+                doc = {
+                    'doc_id': f"table_{table_id}",
+                    'title': f"{title} {year}",
+                    'content': content,
+                    'doc_type': 'table',
+                    'date': f"{year}-12-31",
+                    'url': table.get('url', ''),
+                    'metadata': {
+                        'source': 'legifrance',
+                        'type': 'table',
+                        'year': year,
+                        'table_id': table_id
+                    }
+                }
+                
+                documents.append(doc)
+            
+            logger.info(f"Extracted {len(documents)} table documents from Legifrance API")
+            return documents
+            
+        except Exception as e:
+            logger.error(f"Error extracting tables from Legifrance API: {str(e)}")
+            return []
+
 # Créer l'instance du gestionnaire ETL
-etl_manager = ETLManager() 
+etl_manager = ETLManager()

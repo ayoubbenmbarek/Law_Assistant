@@ -10,8 +10,9 @@ from loguru import logger
 import spacy
 import re
 import textstat
-from transformers import pipeline
+from transformers import pipeline, AutoTokenizer, AutoModelForSeq2SeqLM
 from concurrent.futures import ThreadPoolExecutor
+from huggingface_hub import snapshot_download
 
 from app.utils.vector_store import vector_store
 
@@ -46,13 +47,49 @@ class DataEnrichment:
             
             # Initialiser le résumeur automatique
             logger.info("Initialisation du résumeur automatique")
-            summarizer_model = os.getenv("SUMMARIZER_MODEL", "pltrdy/tf2-t5-base-fr")
+            # Force specific model instead of using environment variable to avoid conflicts
+            summarizer_model = "mrm8488/camembert2camembert_shared-finetuned-french-summarization"
             logger.info(f"Utilisation du modèle de résumé: {summarizer_model}")
-            self.summarizer = pipeline(
-                "summarization", 
-                model=summarizer_model,
-                device=-1
-            )
+            
+            # Utiliser explicitement le token Hugging Face pour accéder au modèle
+            hf_token = os.getenv("HUGGINGFACE_TOKEN")
+            
+            try:
+                if hf_token:
+                    logger.info("Utilisation du token HuggingFace pour accéder au modèle")
+                    # Télécharger le modèle avec token d'authentification
+                    model_path = snapshot_download(
+                        repo_id=summarizer_model,
+                        token=hf_token
+                    )
+                    
+                    # Charger le tokenizer et le modèle explicitement
+                    tokenizer = AutoTokenizer.from_pretrained(model_path)
+                    model = AutoModelForSeq2SeqLM.from_pretrained(model_path)
+                    
+                    # Créer le pipeline
+                    self.summarizer = pipeline(
+                        "summarization", 
+                        model=model,
+                        tokenizer=tokenizer,
+                        device=-1
+                    )
+                    
+                    logger.info("Pipeline de résumé initialisé avec succès")
+                else:
+                    # Essayer sans token (pour les modèles publics)
+                    tokenizer = AutoTokenizer.from_pretrained(summarizer_model)
+                    model = AutoModelForSeq2SeqLM.from_pretrained(summarizer_model)
+                    
+                    self.summarizer = pipeline(
+                        "summarization", 
+                        model=model,
+                        tokenizer=tokenizer,
+                        device=-1
+                    )
+            except Exception as e:
+                logger.error(f"Erreur lors de l'initialisation du résumeur: {str(e)}")
+                self.summarizer = None
             
             # Thread pool pour paralléliser les traitements
             self.executor = ThreadPoolExecutor(max_workers=MAX_THREADS)

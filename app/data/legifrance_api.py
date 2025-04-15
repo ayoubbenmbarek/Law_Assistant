@@ -11,8 +11,8 @@ from app.utils.vector_store import vector_store
 load_dotenv()
 
 # API configuration
-LEGIFRANCE_API_KEY = os.getenv("PISTE_API_KEY", "")
-LEGIFRANCE_API_SECRET = os.getenv("PISTE_SECRET_KEY", "")
+LEGIFRANCE_API_KEY = os.getenv("PISTE_API_KEY", "8687ddca-33a7-47d3-a5b7-970b71a6af92")
+LEGIFRANCE_API_SECRET = os.getenv("PISTE_SECRET_KEY", "bb6476dd-7e31-4e8f-800b-d0e4ed3a9df2")
 LEGIFRANCE_API_BASE_URL = "https://api.piste.gouv.fr/dila/legifrance/lf-engine-app"
 LEGIFRANCE_API_SANDBOX_URL = "https://sandbox-api.piste.gouv.fr/dila/legifrance/lf-engine-app"
 LEGIFRANCE_AUTH_URL = "https://oauth.piste.gouv.fr/api/oauth/token"
@@ -711,5 +711,188 @@ class LegifranceAPI:
         logger.info(f"Importation de jurisprudence terminée. Total: {imported_count} décisions importées")
         return {"imported_count": imported_count}
 
+    async def import_tables(self, start_year: int = None, end_year: int = None):
+        """
+        Importe les tables annuelles Légifrance dans la base vectorielle
+        
+        Args:
+            start_year: Année de début pour l'importation des tables (par défaut: année actuelle - 5)
+            end_year: Année de fin pour l'importation des tables (par défaut: année actuelle)
+            
+        Returns:
+            Statistiques d'importation
+        """
+        # Définir la plage d'années par défaut si non spécifiée
+        current_year = datetime.now().year
+        if start_year is None:
+            start_year = current_year - 5
+        if end_year is None:
+            end_year = current_year
+            
+        logger.info(f"Début de l'importation des tables annuelles: {start_year}-{end_year}")
+        
+        try:
+            # Récupérer les tables depuis l'API
+            tables_response = await self.get_tables(start_year, end_year)
+            
+            # Vérifier et récupérer la liste des tables
+            tables = []
+            if isinstance(tables_response, dict) and "tables" in tables_response:
+                tables = tables_response["tables"]
+            elif isinstance(tables_response, list):
+                tables = tables_response
+            
+            if not tables:
+                logger.warning("Aucune table trouvée dans la réponse API")
+                return {"imported_count": 0, "error": "Aucune table trouvée"}
+                
+            logger.info(f"{len(tables)} tables récupérées pour traitement")
+            
+            # Traiter chaque table
+            imported_count = 0
+            processed_tables = []
+            
+            for table in tables:
+                table_id = table.get("id", "")
+                file_name = table.get("fileName", "")
+                path_to_file = table.get("pathToFile", "")
+                date_publi = table.get("datePubli", 0)
+                year = str(datetime.fromtimestamp(date_publi/1000).year) if date_publi else 'Unknown'
+                table_type = table.get("type", "")
+                
+                # Construire un titre à partir des informations disponibles
+                title = f"Table Annuelle {year} - {table_type}"
+                
+                # Générer un contenu structuré à partir des informations disponibles
+                structured_content = [
+                    f"Documentation de Table Annuelle Légifrance pour l'année {year}",
+                    f"Type: {table_type}",
+                    f"ID: {table_id}",
+                    f"Date de publication: {datetime.fromtimestamp(date_publi/1000).strftime('%Y-%m-%d') if date_publi else 'Inconnue'}",
+                    f"Nom de fichier: {file_name}"
+                ]
+                
+                # Ajouter des informations de section si disponibles
+                if 'sections' in table:
+                    structured_content.append("\nSections de la table:")
+                    for section in table.get('sections', []):
+                        section_title = section.get('title', '')
+                        structured_content.append(f"- {section_title}")
+                        
+                        # Ajouter les sous-sections si disponibles
+                        for subsection in section.get('sections', []):
+                            subsection_title = subsection.get('title', '')
+                            structured_content.append(f"  - {subsection_title}")
+                
+                # Format standardisé pour l'ajout à la base vectorielle
+                formatted_doc = {
+                    "id": f"table_{table_id}",
+                    "title": title,
+                    "content": "\n".join(structured_content),
+                    "doc_type": "table",
+                    "date": f"{year}-12-31",
+                    "url": "",
+                    "metadata": {
+                        "source": "legifrance",
+                        "type": "table",
+                        "table_type": table_type,
+                        "year": year,
+                        "table_id": table_id,
+                        "file_name": file_name,
+                        "path_to_file": path_to_file
+                    }
+                }
+                
+                processed_tables.append(formatted_doc)
+            
+            # Enrichir les documents si possible
+            try:
+                from app.data.data_enrichment import data_enrichment
+                logger.info(f"Enrichissement de {len(processed_tables)} documents")
+                enriched_docs = await data_enrichment.enrich_documents(processed_tables)
+                processed_tables = enriched_docs
+                logger.info("Enrichissement terminé avec succès")
+            except Exception as e:
+                logger.warning(f"Impossible d'enrichir les documents: {str(e)}")
+            
+            # Importer dans la base vectorielle
+            for doc in processed_tables:
+                try:
+                    # Ajouter directement à la base vectorielle un par un
+                    result = vector_store.add_document(
+                        doc_id=doc["id"],
+                        title=doc["title"],
+                        content=doc["content"],
+                        doc_type=doc["doc_type"],
+                        date=doc["date"],
+                        url=doc["url"],
+                        metadata=doc["metadata"]
+                    )
+                    
+                    if result:
+                        imported_count += 1
+                        logger.info(f"Table importée: {doc['title']}")
+                    else:
+                        logger.warning(f"Échec de l'importation de la table {doc['id']}")
+                        
+                except Exception as e:
+                    logger.error(f"Erreur lors de l'importation de la table {doc['id']}: {str(e)}")
+            
+            logger.info(f"Import des tables terminé. {imported_count}/{len(processed_tables)} tables importées")
+            
+            # Retourner le résultat sous forme de liste pour la compatibilité avec le pipeline manager
+            imported_tables = []
+            for i, doc in enumerate(processed_tables[:imported_count]):
+                imported_tables.append({
+                    "id": f"table_imported_{i}",
+                    "content": f"Table Légifrance importée : {doc['title']}",
+                    "title": doc['title'],
+                    "type": "table",
+                    "source": "legifrance",
+                    "imported": True
+                })
+                
+            return imported_tables
+            
+        except Exception as e:
+            logger.error(f"Erreur lors de l'importation des tables: {str(e)}")
+            import traceback
+            logger.error(traceback.format_exc())
+            return []
+
 # Créer l'instance du client API
 legifrance_api = LegifranceAPI()
+
+def get_tables_direct(api, start_year, end_year):
+    """Call the Legifrance API directly using requests"""
+    import requests
+    
+    # Get the authentication token from the API object
+    token = api.token if hasattr(api, 'token') else None
+    base_url = api.base_url if hasattr(api, 'base_url') else "https://api.piste.gouv.fr/dila/legifrance/lf-engine-app"
+    
+    if not token:
+        logger.error("No authentication token available")
+        return None
+    
+    # Prepare request
+    url = f"{base_url}/consult/getTables"
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "period": {
+            "startYear": start_year,
+            "endYear": end_year
+        }
+    }
+    
+    # Make request
+    response = requests.post(url, json=payload, headers=headers)
+    
+    if response.status_code != 200:
+        logger.error(f"API request failed with status {response.status_code}: {response.text}")
+        return None
+    
+    return response.json()

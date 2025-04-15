@@ -190,65 +190,140 @@ class VectorStore:
                 logger.error(f"Error initializing Qdrant: {str(e)}")
                 self.is_functional = False
             
-    def add_document(self, doc_id: str, title: str, content: str, doc_type: str, 
-                    date: str, url: Optional[str] = None, metadata: Optional[Dict[str, Any]] = None):
+    def add_document(self, doc_id: str, title: str = "", content: str = "", doc_type: str = "", date: str = "", url: str = "", metadata: dict = None, collection_name: str = None, numeric_id: int = None):
         """
         Add a document to the vector store
         
         Args:
-            doc_id: Unique identifier for the document
-            title: Document title
-            content: Document text content
-            doc_type: Document type (loi, jurisprudence, etc.)
-            date: Document date
-            url: URL to the source
-            metadata: Additional metadata
+            doc_id: Unique ID for the document
+            title: Title of the document
+            content: Text content of the document
+            doc_type: Type of document (e.g., code, jurisprudence)
+            date: Date of the document in ISO format
+            url: URL to the original document
+            metadata: Additional data to store with the document
+            collection_name: Name of the collection to add to (optional)
+            numeric_id: Optional numeric ID to use directly (for Qdrant)
+        
+        Returns:
+            Success status
         """
-        if not self.is_functional or not self.client:
-            logger.warning("Cannot add document: VectorStore not functional")
+        # Ensure metadata is a dictionary
+        if metadata is None:
+            metadata = {}
+            
+        # Create a complete document structure
+        document = {
+            "title": title,
+            "content": content,
+            "type": doc_type,
+            "date": date,
+            "url": url,
+            "metadata": metadata
+        }
+        
+        if self.db_type == "weaviate":
+            return self._add_document_weaviate(doc_id, document, collection_name)
+        elif self.db_type == "qdrant":
+            return self._add_document_qdrant(doc_id, document, collection_name, numeric_id)
+        else:
+            logger.error(f"Unsupported backend: {self.db_type}")
             return False
             
-        try:
-            # Generate embedding
-            embedding = model.encode(content).tolist()
+    def _add_document_weaviate(self, doc_id: str, document: dict, collection_name: str = None):
+        """Add a document to Weaviate backend"""
+        # Default to configured collection if none specified
+        if not collection_name:
+            collection_name = LEGAL_TEXTS_COLLECTION
             
-            if self.db_type == "weaviate":
+        # Generate embeddings
+        try:
+            # Use the document content for embedding
+            content = document.get("content", "")
+            if not content:
+                logger.warning(f"Empty content for document {doc_id}, using title instead")
+                content = document.get("title", "")
+                
+            embedding = model.encode(content).tolist()
+            if not embedding:
+                logger.error(f"Failed to generate embedding for document {doc_id}")
+                return False
+                
+            # Add to Weaviate
+            try:
                 self.client.data_object.create(
-                    class_name=LEGAL_TEXTS_COLLECTION,
-                    data_object={
-                        "title": title,
-                        "content": content,
-                        "type": doc_type,
-                        "date": date,
-                        "url": url or "",
-                        "metadata": metadata or {}
-                    },
+                    class_name=collection_name,
+                    data_object=document,
                     uuid=doc_id,
                     vector=embedding
                 )
-            elif self.db_type == "qdrant":
+                return True
+            except Exception as e:
+                logger.error(f"Error adding document to Weaviate: {e}")
+                return False
+                
+        except Exception as e:
+            logger.error(f"Error in add_document: {e}")
+            return False
+            
+    def _add_document_qdrant(self, doc_id: str, document: dict, collection_name: str = None, numeric_id: int = None):
+        """Add a document to Qdrant backend"""
+        # Default to configured collection if none specified
+        if not collection_name:
+            collection_name = LEGAL_TEXTS_COLLECTION
+            
+        # Generate embeddings
+        try:
+            # Use the document content for embedding
+            content = document.get("content", "")
+            if not content:
+                logger.warning(f"Empty content for document {doc_id}, using title instead")
+                content = document.get("title", "")
+                
+            embedding = model.encode(content).tolist()
+            if not embedding:
+                logger.error(f"Failed to generate embedding for document {doc_id}")
+                return False
+            
+            # Use provided numeric_id or convert string ID to numeric ID for Qdrant
+            try:
+                if numeric_id is not None:
+                    # Use the provided numeric ID
+                    point_id = numeric_id
+                else:
+                    # Try to use doc_id directly if it's already a valid numeric ID
+                    try:
+                        point_id = int(doc_id)
+                    except ValueError:
+                        # If not an integer, generate a numeric ID using hash
+                        import hashlib
+                        hash_obj = hashlib.md5(doc_id.encode())
+                        point_id = abs(int(hash_obj.hexdigest(), 16) % (2**31 - 1))
+                
+                # Prepare payload with all document data
+                payload = {
+                    "original_id": doc_id,  # Store original ID in payload
+                    **document
+                }
+                
+                # Add document to Qdrant
                 self.client.upsert(
-                    collection_name=LEGAL_TEXTS_COLLECTION,
+                    collection_name=collection_name,
                     points=[
                         models.PointStruct(
-                            id=doc_id,
+                            id=point_id,
                             vector=embedding,
-                            payload={
-                                "title": title,
-                                "content": content,
-                                "type": doc_type,
-                                "date": date,
-                                "url": url or "",
-                                "metadata": metadata or {}
-                            }
+                            payload=payload
                         )
                     ]
                 )
-            
-            logger.info(f"Added document to vector store: {doc_id}")
-            return True
+                return True
+            except Exception as e:
+                logger.error(f"Error adding document to Qdrant: {e}")
+                return False
+                
         except Exception as e:
-            logger.error(f"Error adding document to vector store: {str(e)}")
+            logger.error(f"Error in add_document: {e}")
             return False
             
     def search(self, query: str, limit: int = 5, doc_type: Optional[str] = None, filters: Optional[Dict] = None) -> List[Dict[str, Any]]:

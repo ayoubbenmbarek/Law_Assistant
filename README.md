@@ -101,6 +101,58 @@ Un outil d'administration en ligne de commande permet de:
 - Exporter des données en différents formats
 - Valider la qualité et la cohérence des données
 
+### Détails de l'outil data_admin.py
+
+L'outil `data_admin.py` est un utilitaire en ligne de commande puissant qui centralise toutes les opérations de gestion des données juridiques. Il permet de:
+
+1. **Gérer l'importation de données** (`import`):
+   - Lancer l'importation depuis toutes les sources ou des sources spécifiques
+   - Configurer des paramètres d'importation personnalisés
+   - Suivre les statistiques d'importation en temps réel
+
+2. **Enrichir les documents** (`enrich`):
+   - Ajouter des métadonnées avancées aux documents juridiques
+   - Générer des résumés automatiques grâce au modèle de NLP
+   - Extraire des entités et références juridiques
+   - Classifier les documents par domaine juridique
+
+3. **Effectuer des recherches** (`search`):
+   - Interroger la base vectorielle avec recherche sémantique
+   - Filtrer par type de document, domaine juridique, dates, etc.
+   - Afficher des résultats formatés avec métriques de pertinence
+
+4. **Consulter les statistiques** (`stats`):
+   - Obtenir des métriques sur la base de connaissances
+   - Visualiser la distribution des documents par source, type, date
+   - Analyser la couverture par domaine juridique
+
+5. **Exporter des données** (`export`):
+   - Générer des exports dans différents formats (JSON, CSV, etc.)
+   - Sélectionner des sous-ensembles spécifiques de la base
+   - Personnaliser le format des données exportées
+
+6. **Valider la qualité des données** (`validate`):
+   - Vérifier la cohérence et l'intégrité des documents
+   - Détecter les anomalies et doublons potentiels
+   - Générer des rapports de qualité des données
+
+### Modèle de résumé automatique
+
+Le système utilise le modèle `mrm8488/camembert2camembert_shared-finetuned-french-summarization` pour la génération automatique de résumés juridiques. Ce modèle offre plusieurs avantages:
+
+- **Spécialisation française**: Basé sur CamemBERT, il est spécifiquement entraîné pour le français
+- **Optimisé pour la synthèse**: Fine-tuné pour créer des résumés concis et pertinents
+- **Architecture seq2seq**: Utilise une architecture encodeur-décodeur pour une génération de texte de qualité
+
+Le modèle aide le système à:
+
+1. **Enrichir les documents** en générant automatiquement des résumés des longs textes juridiques
+2. **Améliorer la recherche** en permettant une indexation sur les résumés pertinents
+3. **Faciliter la compréhension** des textes juridiques complexes
+4. **Accélérer l'analyse** des documents par les utilisateurs
+
+Les résumés générés sont stockés dans les métadonnées des documents et peuvent être affichés dans les résultats de recherche pour donner un aperçu rapide du contenu avant que l'utilisateur n'accède au document complet.
+
 ## Installation et déploiement
 
 ### Prérequis
@@ -176,6 +228,20 @@ Un outil d'administration en ligne de commande permet de:
 
 ## Utilisation de l'outil d'administration des données
 
+Pour utiliser l'outil d'administration, assurez-vous de définir correctement le PYTHONPATH pour permettre la résolution des imports:
+
+```bash
+# Option 1: Définir PYTHONPATH temporairement lors de l'exécution
+cd /chemin/vers/law_assistant
+PYTHONPATH=. python app/admin/data_admin.py [commande]
+
+# Option 2: Utiliser le module Python directement (recommandé)
+cd /chemin/vers/law_assistant
+python -m app.admin.data_admin [commande]
+```
+
+Exemples d'utilisation:
+
 ```bash
 # Importer toutes les sources de données
 python -m app.admin.data_admin import --source all
@@ -195,6 +261,23 @@ python -m app.admin.data_admin stats
 # Exporter des données
 python -m app.admin.data_admin export --format json --query "RGPD" --limit 100 --output rgpd_docs.json
 ```
+
+### Configuration permanente du PYTHONPATH (Développement)
+
+Pour éviter de définir PYTHONPATH à chaque fois, vous pouvez:
+
+1. **Ajouter au fichier de profil shell** (.bashrc, .zshrc, etc.):
+   ```bash
+   echo 'export PYTHONPATH=$PYTHONPATH:/chemin/absolu/vers/law_assistant' >> ~/.zshrc
+   source ~/.zshrc
+   ```
+
+2. **Créer un fichier .pth dans votre environnement virtuel**:
+   ```bash
+   echo "/chemin/absolu/vers/law_assistant" > venv/lib/python3.11/site-packages/law_assistant.pth
+   ```
+
+Dans les conteneurs Docker, le PYTHONPATH est déjà configuré correctement via le Dockerfile, donc aucune configuration supplémentaire n'est nécessaire.
 
 ## Avertissement
 
@@ -309,3 +392,73 @@ Pour configurer l'application sur votre propre domaine :
 2. Modifiez `app/core/config.py` pour ajouter votre domaine à la liste `CORS_ORIGINS`
 
 3. Reconstruisez et redéployez l'application 
+
+# API Légifrance - Documentation et Implémentation
+
+Ce projet implémente des clients et utilitaires pour l'API Légifrance, permettant d'accéder aux données juridiques françaises.
+
+## Documentation
+
+Nous avons créé une documentation détaillée sur l'utilisation de l'API Légifrance:
+
+- [Guide d'utilisation complet](scripts/README.md) - Explique les concepts clés, l'authentification et les endpoints disponibles
+- [Script de démonstration](test_legifrance_api.py) - Montre comment utiliser l'API sans dépendances
+
+## Scripts disponibles
+
+1. **test_legifrance_api.py** - Script indépendant pour tester l'API Légifrance
+2. **test_api_connection_oauth.py** - Test des APIs Judilibre et Légifrance
+3. **app/data/legifrance_api.py** - Implémentation complète intégrée à l'application
+
+## Utilisation de l'environnement Sandbox
+
+L'API Légifrance dispose d'un environnement sandbox pour les tests, mais avec des limitations:
+
+⚠️ **Limitations actuelles du sandbox:**
+- Certains endpoints sont indisponibles ou retournent des erreurs
+- Peu de données de test sont disponibles
+- Les endpoints `/search/jurisprudence` et `/list/conventions` ne fonctionnent pas correctement
+
+✅ **Endpoints fonctionnels dans le sandbox:**
+- `/consult/getCnilWithAncienId` - Récupération de délibérations CNIL
+- `/consult/getTables` - Récupération des tables annuelles (mais peu de données)
+
+## Configuration
+
+Pour utiliser les scripts, configurez vos identifiants API:
+
+1. Créez un fichier `.env` à la racine du projet avec:
+```
+PISTE_API_KEY=votre_client_id
+PISTE_SECRET_KEY=votre_client_secret
+```
+
+2. Ou définissez-les comme variables d'environnement:
+```bash
+export PISTE_API_KEY=votre_client_id
+export PISTE_SECRET_KEY=votre_client_secret
+```
+
+## Documentation officielle
+
+Pour accéder à la documentation officielle de l'API Légifrance:
+
+1. Créez un compte sur le [portail PISTE](https://piste.gouv.fr/)
+2. Consultez la section "API Légifrance" dans le catalogue des APIs
+3. Consultez les documents officiels dans le répertoire `docs/official_documents/Légifrance/`
+
+## Dépannage
+
+Si vous rencontrez des problèmes:
+
+1. Vérifiez la validité de vos identifiants
+2. Consultez [troubleshooting_api_access.md](docs/troubleshooting_api_access.md)
+3. Vérifiez [api_connection_status.md](docs/api_connection_status.md) pour l'état des services
+
+## Contribuer
+
+Pour contribuer à ce projet:
+
+1. Créez un fork du dépôt
+2. Créez une branche pour votre fonctionnalité
+3. Soumettez une pull request avec vos modifications 

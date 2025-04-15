@@ -37,3 +37,7 @@ Souhaitez-vous que je vous aide à rédiger le formulaire de demande d'accès à
 TODO later:
 https://datapass.api.gouv.fr/data-providers/api
 API Tierce Déclaration auto-entrepreneur
+
+// useful commands:
+// importation des tables Légifrance
+python app/admin/data_admin.py import --source legifrance --method import_tables --options start_year=ANNÉE_DÉBUT end_year=ANNÉE_FIN
