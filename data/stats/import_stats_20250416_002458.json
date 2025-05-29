@@ -1,0 +1,8 @@
+{
+    "total_imported": 0,
+    "start_time": "2025-04-16T00:24:58.279320",
+    "sources_stats": {},
+    "error_count": 0,
+    "error": "PipelineManager._run_source_import() got an unexpected keyword argument 'limit'",
+    "end_time": "2025-04-16T00:24:58.279354"
+}

@@ -61,6 +61,26 @@ class DataAdministrationCLI:
             logger.info("Lancement de l'importation complète de toutes les sources")
             stats = await pipeline_manager.run_full_pipeline()
             self._display_import_stats(stats)
+        elif args.source == "legifrance_codes":
+            # Importer des codes depuis Legifrance
+            logger.info("Lancement de l'importation des codes Legifrance")
+            from app.data.import_codes import main as import_codes_main
+            
+            # Construire les arguments pour l'import de codes
+            codes = None
+            skip_auth = False
+            
+            if args.options:
+                for option in args.options:
+                    key, value = option.split("=")
+                    if key == "codes":
+                        codes = value.split(",")
+                    elif key == "skip_auth" and value.lower() == "true":
+                        skip_auth = True
+            
+            # Lancer l'importation des codes
+            await import_codes_main(codes, skip_auth)
+            logger.info("Importation des codes terminée")
         else:
             # Exécuter l'importation pour une source spécifique
             logger.info(f"Lancement de l'importation depuis {args.source}")

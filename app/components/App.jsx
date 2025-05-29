@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import QueryForm from './QueryForm';
 import LegalResponse from './LegalResponse';
+import LegalSearch from './LegalSearch';
 import './App.css';
 
 // Configuration de l'URL de l'API backend avec détection d'environnement
@@ -32,6 +33,7 @@ const App = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [response, setResponse] = useState(null);
+  const [activeView, setActiveView] = useState('chat'); // 'chat' or 'search'
 
   // This function now receives the response data from QueryForm
   // and doesn't need to make another API call
@@ -68,41 +70,59 @@ const App = () => {
       <header className="app-header">
         <h1>Assistant Juridique IA</h1>
         <p className="subtitle">Votre conseiller juridique en droit français</p>
+        <div className="view-toggle">
+          <button 
+            className={`toggle-button ${activeView === 'chat' ? 'active' : ''}`} 
+            onClick={() => setActiveView('chat')}
+          >
+            Assistant IA
+          </button>
+          <button 
+            className={`toggle-button ${activeView === 'search' ? 'active' : ''}`} 
+            onClick={() => setActiveView('search')}
+          >
+            Recherche Juridique
+          </button>
+        </div>
       </header>
       
       <main className="app-main">
-        {!response ? (
-          <div className="query-section">
-            <QueryForm 
-              onSubmit={handleSubmit} 
-              onError={handleError} 
-              isLoading={loading}
-              setLoading={setLoading}
-            />
-            
-            {error && (
-              <div className="error-message">
-                <p>{error}</p>
-                <button onClick={() => setError(null)}>Réessayer</button>
-              </div>
-            )}
-            
-            {loading && (
-              <div className="loading-indicator">
-                <div className="spinner"></div>
-                <p>Recherche en cours dans la base de données juridiques...</p>
-              </div>
-            )}
-          </div>
-        ) : (
-          <div className="response-section">
-            <LegalResponse response={response} />
-            <div className="response-actions">
-              <button className="button secondary" onClick={resetForm}>
-                Nouvelle requête
-              </button>
+        {activeView === 'chat' ? (
+          !response ? (
+            <div className="query-section">
+              <QueryForm 
+                onSubmit={handleSubmit} 
+                onError={handleError} 
+                isLoading={loading}
+                setLoading={setLoading}
+              />
+              
+              {error && (
+                <div className="error-message">
+                  <p>{error}</p>
+                  <button onClick={() => setError(null)}>Réessayer</button>
+                </div>
+              )}
+              
+              {loading && (
+                <div className="loading-indicator">
+                  <div className="spinner"></div>
+                  <p>Recherche en cours dans la base de données juridiques...</p>
+                </div>
+              )}
             </div>
-          </div>
+          ) : (
+            <div className="response-section">
+              <LegalResponse response={response} />
+              <div className="response-actions">
+                <button className="button secondary" onClick={resetForm}>
+                  Nouvelle requête
+                </button>
+              </div>
+            </div>
+          )
+        ) : (
+          <LegalSearch />
         )}
       </main>
       

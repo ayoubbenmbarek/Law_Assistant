@@ -1,0 +1,21 @@
+{
+    "total_imported": 0,
+    "start_time": "2025-04-16T00:04:35.400440",
+    "sources_stats": {
+        "legifrance": {
+            "name": "Légifrance API",
+            "documents_imported": 0,
+            "methods": {
+                "import_jurisprudence": {
+                    "documents_imported": 0,
+                    "start_time": "2025-04-16T00:04:35.400445",
+                    "end_time": "2025-04-16T00:04:37.314274",
+                    "duration_seconds": 1.913829
+                }
+            }
+        }
+    },
+    "error_count": 0,
+    "end_time": "2025-04-16T00:04:37.314341",
+    "duration_seconds": 1.913901
+}

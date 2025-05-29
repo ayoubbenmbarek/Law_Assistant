@@ -1,11 +1,15 @@
 import os
-import requests
+import asyncio
+import time
 import json
+import logging
+import requests
 from typing import List, Dict, Any, Optional, Union
-from datetime import datetime, timedelta
 from dotenv import load_dotenv
+from datetime import datetime, timedelta
 from loguru import logger
 from app.utils.vector_store import vector_store
+import uuid
 
 # Load environment variables
 load_dotenv()
@@ -425,6 +429,7 @@ class LegifranceAPI:
             Résultats de recherche dans les codes
         """
         payload = {
+            "fond": "CODE",  # Fond spécifique pour les codes
             "recherche": {
                 "champ": query,
                 "pageNumber": page,
@@ -433,12 +438,28 @@ class LegifranceAPI:
         }
         
         try:
-            return await self._make_api_request("search/code", "POST", payload)
+            # Use /search endpoint instead of /consult/code
+            result = await self._make_api_request("search", "POST", payload)
+            logger.info(f"Recherche dans les codes réussie: {len(result.get('results', []))} résultats")
+            return result
         except Exception as e:
             logger.error(f"Échec de recherche dans les codes: {str(e)}")
             if not self.api_key or not self.api_secret:
+                logger.warning("Utilisation de données de test pour les codes (API non disponible)")
                 return {"results": self._get_mock_code_results(query, page_size)}
-            raise
+            
+            # Try to provide more detailed error information
+            if hasattr(e, 'status_code') and hasattr(e, 'text'):
+                logger.error(f"Statut HTTP: {e.status_code}, Réponse: {e.text}")
+                
+            # Instead of raising, return empty results with error info
+            return {
+                "results": [],
+                "error": str(e),
+                "query": query,
+                "page": page,
+                "pageSize": page_size
+            }
     
     async def search_jurisprudence(self, query: str, page: int = 1, page_size: int = 10, 
                                   sort: str = "date desc") -> Dict[str, Any]:
@@ -455,6 +476,7 @@ class LegifranceAPI:
             Résultats de recherche dans la jurisprudence
         """
         payload = {
+            "fond": "JURI",  # Fond spécifique pour la jurisprudence
             "recherche": {
                 "champ": query,
                 "pageNumber": page,
@@ -464,12 +486,28 @@ class LegifranceAPI:
         }
         
         try:
-            return await self._make_api_request("search/juri", "POST", payload)
+            # Use /search endpoint as in local_legifrance_import.py instead of /consult/juri
+            result = await self._make_api_request("search", "POST", payload)
+            logger.info(f"Recherche dans la jurisprudence réussie: {len(result.get('results', []))} résultats")
+            return result
         except Exception as e:
             logger.error(f"Échec de recherche dans la jurisprudence: {str(e)}")
             if not self.api_key or not self.api_secret:
+                logger.warning("Utilisation de données de test pour la jurisprudence (API non disponible)")
                 return {"results": self._get_mock_jurisprudence_results(query, page_size)}
-            raise
+            
+            # Try to provide more detailed error information
+            if hasattr(e, 'status_code') and hasattr(e, 'text'):
+                logger.error(f"Statut HTTP: {e.status_code}, Réponse: {e.text}")
+                
+            # Instead of raising, return empty results with error info
+            return {
+                "results": [],
+                "error": str(e),
+                "query": query,
+                "page": page,
+                "pageSize": page_size
+            }
     
     # ===== SUGGEST CONTROLLER =====
     
@@ -621,11 +659,14 @@ class LegifranceAPI:
         """Importe des sources juridiques dans la base vectorielle"""
         try:
             for source in sources:
+                # Utiliser 'type' ou 'doc_type' pour la compatibilité
+                doc_type = source.get("type", source.get("doc_type", "unknown"))
+                
                 vector_store.add_document(
                     doc_id=source["id"],
                     title=source["title"],
                     content=source["content"],
-                    doc_type=source["type"],
+                    doc_type=doc_type,
                     date=source["date"],
                     url=source["url"],
                     metadata=source["metadata"]
@@ -658,12 +699,16 @@ class LegifranceAPI:
         for term in search_terms:
             try:
                 logger.info(f"Recherche dans les codes avec le terme: {term}")
-                results = await self.search_codes(term, limit)
+                search_results = await self.search_codes(term, limit)
                 
-                if results:
-                    await self.import_to_vector_store(results)
-                    imported_count += len(results)
-                    logger.info(f"Importé {len(results)} articles de code pour le terme '{term}'")
+                if search_results and 'results' in search_results and search_results['results']:
+                    # Formater les résultats pour l'importation
+                    formatted_results = self._format_code_results(search_results['results'])
+                    
+                    # Importer les résultats formatés
+                    await self.import_to_vector_store(formatted_results)
+                    imported_count += len(formatted_results)
+                    logger.info(f"Importé {len(formatted_results)} articles de code pour le terme '{term}'")
                 else:
                     logger.warning(f"Aucun résultat trouvé pour le terme '{term}'")
             
@@ -672,6 +717,105 @@ class LegifranceAPI:
         
         logger.info(f"Importation des codes terminée. Total: {imported_count} articles importés")
         return {"imported_count": imported_count}
+
+    def _format_code_results(self, results: List[Dict]) -> List[Dict[str, Any]]:
+        """
+        Formate les résultats de recherche de codes pour les adapter au format attendu par import_to_vector_store
+        
+        Args:
+            results: Liste des résultats bruts de l'API
+            
+        Returns:
+            Liste des résultats formatés pour l'import
+        """
+        formatted_results = []
+        
+        for result in results:
+            # Extraire les informations pertinentes
+            result_id = result.get('id', '')
+            title = result.get('title', '')
+            
+            # Extraire informations du texte
+            text_title = ""
+            if 'text' in result and result['text'] and 'title' in result['text']:
+                text_title = result['text'].get('title', '')
+            
+            if not title and text_title:
+                title = text_title
+            
+            # Identifier le code et l'article si possible
+            code_name = ""
+            article_id = ""
+            
+            # Extraction possible à partir de l'URL ou du titre
+            if 'nature' in result:
+                code_name = result.get('nature', '')
+            
+            if not code_name and title:
+                # Essayer d'extraire du titre
+                import re
+                code_match = re.search(r'Code\s+(\w+)', title)
+                if code_match:
+                    code_name = code_match.group(0)
+            
+            # Extraire ou construire le contenu
+            content = ""
+            if 'text' in result and result['text'] and 'data' in result['text']:
+                content = result['text'].get('data', '')
+            
+            # Utiliser éventuellement un contenu généré from highlights
+            if not content and 'highlights' in result:
+                highlights = result.get('highlights', {})
+                if 'text' in highlights and highlights['text']:
+                    # Joindre les extraits en retirant les balises HTML
+                    import re
+                    clean_highlights = [re.sub(r'<[^>]+>', '', h) for h in highlights['text']]
+                    content = " [...] ".join(clean_highlights)
+            
+            # Si toujours pas de contenu, utiliser un placeholder
+            if not content:
+                content = f"Article de {code_name if code_name else 'code'} sans contenu récupéré."
+            
+            # Construire l'URL si possible
+            url = ""
+            if result_id:
+                url = f"https://www.legifrance.gouv.fr/codes/article_lc/{result_id}"
+            
+            # Date de décision/publication
+            date = result.get('date', '')
+            if not date and 'text' in result and result['text'] and 'date' in result['text']:
+                date = result['text'].get('date', '')
+            
+            # Si toujours pas de date, utiliser la date actuelle
+            if not date:
+                from datetime import datetime
+                date = datetime.now().strftime("%Y-%m-%d")
+            
+            # Metadata
+            metadata = {
+                "code": code_name,
+                "nature": result.get('nature', ''),
+                "source": "legifrance"
+            }
+            
+            # Ajouter les thèmes s'ils existent
+            if 'themes' in result and result['themes']:
+                metadata["themes"] = result['themes']
+            
+            # Document formaté pour l'importation
+            formatted_doc = {
+                "id": result_id,
+                "title": title,
+                "content": content,
+                "type": "code",
+                "date": date,
+                "url": url,
+                "metadata": metadata
+            }
+            
+            formatted_results.append(formatted_doc)
+        
+        return formatted_results
 
     async def import_jurisprudence(self, limit: int = 20, search_terms: List[str] = None):
         """
@@ -688,6 +832,9 @@ class LegifranceAPI:
                 "consommation", "vice caché", "garantie", "responsabilité", "préjudice",
                 "dommages et intérêts", "assurance", "fraude", "impôt"
             ]
+        elif isinstance(search_terms, str):
+            # Permettre un seul terme de recherche passé comme chaîne
+            search_terms = [search_terms]
         
         imported_count = 0
         
@@ -696,20 +843,188 @@ class LegifranceAPI:
         for term in search_terms:
             try:
                 logger.info(f"Recherche dans la jurisprudence avec le terme: {term}")
-                results = await self.search_jurisprudence(term, limit)
+                search_results = await self.search_jurisprudence(term, page=1, page_size=limit)
                 
-                if results:
-                    await self.import_to_vector_store(results)
-                    imported_count += len(results)
-                    logger.info(f"Importé {len(results)} décisions pour le terme '{term}'")
+                # Log pour comprendre la structure de la réponse
+                if search_results:
+                    logger.debug(f"Clés au premier niveau de la réponse: {list(search_results.keys())}")
+                
+                results_list = []
+                
+                # Vérifier les différents formats possibles de la réponse
+                if 'results' in search_results and search_results['results']:
+                    results_list = search_results['results']
+                    logger.info(f"Format standard: {len(results_list)} résultats trouvés")
+                # Cas alternatif où les résultats sont directement à la racine
+                elif isinstance(search_results, list):
+                    results_list = search_results
+                    logger.info(f"Format liste: {len(results_list)} résultats trouvés")
+                # Cas où il n'y a pas de résultats ou format non reconnu
                 else:
-                    logger.warning(f"Aucun résultat trouvé pour le terme '{term}'")
+                    logger.warning(f"Format de réponse non reconnu ou aucun résultat pour '{term}'. "
+                                  f"Réponse: {search_results}")
+                    continue
+                
+                if results_list:
+                    # Formater les résultats pour l'importation
+                    formatted_results = self._format_jurisprudence_results(results_list)
+                    
+                    if formatted_results:
+                        # Importer les résultats formatés
+                        logger.info(f"Tentative d'importation de {len(formatted_results)} documents formatés")
+                        await self.import_to_vector_store(formatted_results)
+                        imported_count += len(formatted_results)
+                        logger.info(f"Importé {len(formatted_results)} décisions pour le terme '{term}'")
+                    else:
+                        logger.warning(f"Aucun document formaté pour le terme '{term}'")
+                else:
+                    logger.warning(f"Aucun résultat exploitable trouvé pour le terme '{term}'")
             
             except Exception as e:
                 logger.error(f"Erreur lors de l'importation de jurisprudence pour le terme '{term}': {str(e)}")
+                import traceback
+                logger.error(f"Détails: {traceback.format_exc()}")
         
         logger.info(f"Importation de jurisprudence terminée. Total: {imported_count} décisions importées")
         return {"imported_count": imported_count}
+
+    def _format_jurisprudence_results(self, results: List[Dict]) -> List[Dict[str, Any]]:
+        """
+        Formate les résultats de recherche de jurisprudence pour les adapter au format attendu par import_to_vector_store
+        
+        Args:
+            results: Liste des résultats bruts de l'API
+            
+        Returns:
+            Liste des résultats formatés pour l'import
+        """
+        formatted_results = []
+        
+        for result in results:
+            # Log des clés disponibles pour debug
+            logger.debug(f"Clés disponibles dans le résultat: {list(result.keys())}")
+            
+            # Extraire les informations pertinentes - structure spécifique à Légifrance API
+            result_id = result.get('id', '')
+            
+            # Obtenir un ID pour les références et le stockage
+            if not result_id:
+                # Essayer d'extraire de reference ou num
+                result_id = result.get('reference', '') or result.get('num', '')
+                if not result_id:
+                    result_id = str(uuid.uuid4())  # Générer un UUID si aucun ID n'est disponible
+            
+            # Extraction des titres et dates
+            titles = result.get('titles', [])
+            main_title = ''
+            if titles and isinstance(titles, list) and len(titles) > 0:
+                main_title = titles[0].get('title', '') if isinstance(titles[0], dict) else str(titles[0])
+            
+            # Date - peut être stockée dans différents champs
+            date = result.get('date', '')
+            if not date:
+                date = result.get('datePublication', '') or result.get('dateSignature', '')
+            
+            # Convertir timestamp en date si nécessaire
+            if isinstance(date, (int, float)) and date > 100000:  # Probablement un timestamp
+                date = datetime.fromtimestamp(date/1000 if date > 10000000000 else date).strftime('%Y-%m-%d')
+            
+            # Construire un titre descriptif
+            title = main_title
+            if not title:
+                title = f"Décision juridique {result_id}"
+            
+            # Type de document
+            doc_type = result.get('type', 'jurisprudence')
+            
+            # Nature ou origin peut contenir des informations sur la juridiction
+            juridiction = result.get('origin', '') or result.get('nature', '')
+            
+            # Extraction du contenu
+            content = ""
+            
+            # 1. Essayer d'extraire le contenu du texte ou des résumés
+            if 'text' in result and result['text']:
+                if isinstance(result['text'], str):
+                    content = result['text']
+                elif isinstance(result['text'], dict):
+                    content = result['text'].get('data', '') or result['text'].get('content', '')
+            
+            # 2. Essayer les résumés
+            if not content:
+                content = result.get('resumePrincipal', '') or result.get('autreResume', '')
+            
+            # 3. Essayer d'extraire le contenu des sections
+            if not content and 'sections' in result and result['sections']:
+                sections_content = []
+                for section in result['sections']:
+                    if isinstance(section, dict):
+                        section_content = section.get('content', '')
+                        if section_content:
+                            sections_content.append(section_content)
+                if sections_content:
+                    content = "\n\n".join(sections_content)
+            
+            # 4. Essayer la structure JORF
+            if not content and 'jorfText' in result and result['jorfText']:
+                content = result['jorfText']
+            
+            # 5. Si toujours pas de contenu, vérifier mots-clés et appellations
+            if not content:
+                keywords = []
+                if 'motsCles' in result and isinstance(result['motsCles'], list):
+                    keywords.extend(result['motsCles'])
+                if 'appellations' in result and isinstance(result['appellations'], list):
+                    keywords.extend(result['appellations'])
+                if keywords:
+                    content = "Mots-clés: " + ", ".join(keywords)
+            
+            # 6. Si toujours pas de contenu, utiliser un texte générique
+            if not content:
+                content = (f"Décision juridique: {title} (ID: {result_id}). "
+                          f"Type: {doc_type}. "
+                          f"Date: {date}. "
+                          f"Juridiction: {juridiction}.")
+                logger.warning(f"Aucun contenu trouvé pour l'ID {result_id}, utilisation d'un texte générique.")
+            
+            # Construire l'URL si possible
+            url = ""
+            
+            # Metadata complète
+            metadata = {
+                "source": "legifrance",
+                "type": doc_type
+            }
+            
+            # Ajouter toutes les métadonnées pertinentes disponibles
+            for key, value in result.items():
+                if key not in ['text', 'sections', 'titles', 'content'] and isinstance(value, (str, int, float, bool)):
+                    metadata[key] = value
+            
+            # Ajouter les thèmes s'ils existent
+            if 'themes' in result and result['themes']:
+                metadata["themes"] = result['themes']
+            
+            # Current date as fallback
+            current_date = datetime.now().strftime("%Y-%m-%d")
+            
+            # Document formaté pour l'importation
+            formatted_doc = {
+                "id": result_id,
+                "title": title,
+                "content": content,
+                "type": "jurisprudence",  # Type fixe pour la base vectorielle
+                "date": date or current_date,
+                "url": url,
+                "metadata": metadata
+            }
+            
+            formatted_results.append(formatted_doc)
+            logger.info(f"Document formaté: ID={formatted_doc['id']}, Titre={formatted_doc['title'][:50]}, "
+                       f"Contenu disponible: {'Oui' if content else 'Non'}, "
+                       f"Longueur du contenu: {len(content)} caractères")
+        
+        return formatted_results
 
     async def import_tables(self, start_year: int = None, end_year: int = None):
         """

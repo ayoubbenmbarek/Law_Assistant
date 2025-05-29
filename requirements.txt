@@ -36,6 +36,8 @@ filelock==3.18.0
 fsspec==2025.3.2
 certifi==2025.1.31
 charset-normalizer==3.4.1
+spacy>=3.6.0
+sentencepiece>=0.1.99
 
 # Mise à jour pour compatibilité avec NumPy 2.x
 langchain>=0.1.0

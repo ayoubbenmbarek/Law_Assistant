@@ -28,8 +28,8 @@ Permet de rechercher et consulter les articles des codes juridiques français.
 ### 2. Recherche dans la jurisprudence
 
 ```
-Endpoint: /search/judilibre
-Méthode: GET
+Endpoint: /consult/judilibre
+Méthode: POST
 ```
 
 Permet de rechercher dans la base de jurisprudence judiciaire et administrative.

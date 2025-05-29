@@ -1,6 +1,10 @@
 import os
 import asyncio
 import datetime
+import time
+import json
+import logging
+import requests
 from typing import Dict, List, Any, Optional, Union
 from loguru import logger
 from dotenv import load_dotenv
@@ -10,7 +14,12 @@ from app.data.legifrance_api import legifrance_api
 from app.data.eurlex_api import eurlex_api
 from app.data.conseil_constitutionnel_api import conseil_constitutionnel_api
 from app.data.etl_manager import etl_manager
-from app.data.data_enrichment import data_enrichment
+
+# Try to import data_enrichment (optional)
+try:
+    from app.data.data_enrichment import data_enrichment
+except ImportError:
+    data_enrichment = None
 
 # Importer les services de base de données
 from app.utils.vector_store import vector_store
@@ -144,7 +153,27 @@ class PipelineManager:
         }
         
         try:
-            await self._run_source_import(source_id, method, **kwargs)
+            # Exécuter l'importation et obtenir le résultat
+            import_result = await self._run_source_import(source_id, method, **kwargs)
+            
+            # Mettre à jour les statistiques avec le résultat
+            if isinstance(import_result, dict) and "imported" in import_result:
+                self.import_stats["total_imported"] = import_result["imported"]
+                
+                # Ajouter les statistiques spécifiques à la source
+                if source_id not in self.import_stats["sources_stats"]:
+                    self.import_stats["sources_stats"][source_id] = {
+                        "name": self.sources[source_id]["name"],
+                        "documents_imported": import_result["imported"],
+                        "methods": {}
+                    }
+                
+                # Ajouter les statistiques pour la méthode spécifique
+                if method and "details" in import_result and method in import_result["details"]:
+                    self.import_stats["sources_stats"][source_id]["methods"][method] = {
+                        "documents_imported": import_result["details"][method],
+                        "duration_seconds": import_result.get("time", 0)
+                    }
             
             # Finaliser les statistiques
             self.import_stats["end_time"] = datetime.datetime.now().isoformat()
@@ -168,89 +197,116 @@ class PipelineManager:
             self._save_import_stats()
             raise
     
-    async def _run_source_import(self, source_id: str, specific_method: Optional[str] = None, **kwargs):
+    async def _run_source_import(self, source_id: str, method_name: str = None, **kwargs) -> Dict[str, Any]:
         """
-        Exécuter l'importation à partir d'une source spécifique
+        Exécute une méthode d'importation spécifique pour une source donnée
         
         Args:
             source_id: Identifiant de la source
-            specific_method: Méthode spécifique à appeler (optionnel)
-            **kwargs: Paramètres supplémentaires à passer à la méthode
+            method_name: Nom de la méthode d'importation
+            **kwargs: Options supplémentaires à passer à la méthode (limit, search_terms, etc.)
+            
+        Returns:
+            Résultats de l'importation
         """
-        source = self.sources[source_id]
-        service = source["service"]
-        
-        # Initialiser les statistiques pour cette source
-        self.import_stats["sources_stats"][source_id] = {
-            "name": source["name"],
-            "documents_imported": 0,
-            "methods": {}
-        }
+        start_time = time.time()
+        total_imported = 0
+        result = {"imported": 0, "errors": 0, "details": {}}
         
         try:
-            # Déterminer les méthodes à appeler
-            methods_to_call = [specific_method] if specific_method else source["methods"]
+            # Obtenir la source
+            source = self.sources[source_id]
             
-            for method_name in methods_to_call:
-                if not hasattr(service, method_name):
-                    logger.warning(f"Méthode {method_name} non trouvée dans le service {source_id}")
-                    continue
+            # Vérifier si la méthode demandée existe
+            if not method_name:
+                logger.error(f"Aucune méthode spécifiée pour la source {source_id}")
+                return {"error": "Aucune méthode spécifiée", "imported": 0}
                 
-                # Initialiser les statistiques pour cette méthode
-                self.import_stats["sources_stats"][source_id]["methods"][method_name] = {
-                    "documents_imported": 0,
-                    "start_time": datetime.datetime.now().isoformat()
-                }
+            if not hasattr(source["service"], method_name):
+                logger.error(f"La méthode {method_name} n'existe pas pour la source {source_id}")
+                return {"error": f"Méthode {method_name} non trouvée", "imported": 0}
+            
+            # Récupérer les options des kwargs
+            options = kwargs.get('options', {})
+            
+            # Exécuter la méthode d'importation
+            logger.info(f"Exécution de la méthode {method_name} pour {source_id}")
+            method = getattr(source["service"], method_name)
+            
+            # Si des options sont spécifiées, les passer à la méthode
+            if options:
+                import_result = await method(**options)
+            else:
+                # Passer directement les kwargs (sans 'options')
+                import_result = await method(**kwargs)
+            
+            # Vérifier le format du résultat
+            if isinstance(import_result, list):
+                documents = import_result
+                imported_count = len(documents)
+                logger.info(f"Méthode {method_name} a retourné {imported_count} documents")
+            elif isinstance(import_result, dict) and 'imported_count' in import_result:
+                # Si le résultat est un dictionnaire avec un compteur d'importation
+                imported_count = import_result['imported_count']
+                documents = []  # Pas de documents à traiter davantage
+                logger.info(f"Méthode {method_name} a reporté {imported_count} documents importés")
+                # Mettre à jour les statistiques et terminer
+                result["imported"] = imported_count
+                result["details"][method_name] = imported_count
+                total_imported += imported_count
                 
-                # Appeler la méthode
-                method = getattr(service, method_name)
+                elapsed_time = time.time() - start_time
+                result["time"] = elapsed_time
+                return result
+            else:
+                # Format non reconnu, essayer de convertir en liste
+                logger.warning(f"Résultat non attendu de {method_name}: ce n'est pas une liste. Conversion...")
+                if import_result:
+                    documents = [import_result]
+                    imported_count = 1
+                else:
+                    documents = []
+                    imported_count = 0
+            
+            # Traiter les documents par lots
+            batch_size = 10
+            num_batches = (len(documents) + batch_size - 1) // batch_size if documents else 0
+            
+            for i in range(num_batches):
+                start_idx = i * batch_size
+                end_idx = min((i + 1) * batch_size, len(documents))
+                batch = documents[start_idx:end_idx]
                 
+                logger.info(f"Traitement du lot {i+1}/{num_batches} ({len(batch)} documents)")
+                
+                # Enrichissement des documents si possible
                 try:
-                    # Appel de la méthode avec les paramètres supplémentaires
-                    documents = await method(**kwargs) if kwargs else await method()
-                    
-                    # S'assurer que le résultat est une liste
-                    if not isinstance(documents, list):
-                        logger.warning(f"Résultat non attendu de {method_name}: ce n'est pas une liste. Conversion...")
-                        documents = [documents] if documents else []
-                    
-                    # Traiter les documents par lots
-                    total_docs = len(documents)
-                    batch_size = PIPELINE_BATCH_SIZE
-                    
-                    for i in range(0, total_docs, batch_size):
-                        batch = documents[i:i+batch_size]
-                        logger.info(f"Traitement du lot {i//batch_size + 1}/{(total_docs+batch_size-1)//batch_size} ({len(batch)} documents)")
-                        
-                        # Enrichir les documents
+                    if data_enrichment:
                         enriched_batch = await data_enrichment.enrich_documents(batch)
-                        
-                        # Importer dans la base vectorielle
-                        imported_count = await self._import_to_vector_store(enriched_batch)
-                        
-                        # Mettre à jour les statistiques
-                        self.import_stats["sources_stats"][source_id]["methods"][method_name]["documents_imported"] += imported_count
-                        self.import_stats["sources_stats"][source_id]["documents_imported"] += imported_count
-                        self.import_stats["total_imported"] += imported_count
-                    
-                    # Finaliser les statistiques de la méthode
-                    self.import_stats["sources_stats"][source_id]["methods"][method_name]["end_time"] = datetime.datetime.now().isoformat()
-                    start = datetime.datetime.fromisoformat(self.import_stats["sources_stats"][source_id]["methods"][method_name]["start_time"])
-                    end = datetime.datetime.fromisoformat(self.import_stats["sources_stats"][source_id]["methods"][method_name]["end_time"])
-                    duration = (end - start).total_seconds()
-                    self.import_stats["sources_stats"][source_id]["methods"][method_name]["duration_seconds"] = duration
-                    
-                    logger.info(f"Méthode {method_name} terminée: {self.import_stats['sources_stats'][source_id]['methods'][method_name]['documents_imported']} documents importés")
-                    
+                        batch = enriched_batch
+                    else:
+                        logger.warning("Module d'enrichissement non disponible, utilisation des documents bruts")
                 except Exception as e:
-                    logger.error(f"Erreur lors de l'appel de la méthode {method_name}: {str(e)}")
-                    self.import_stats["sources_stats"][source_id]["methods"][method_name]["error"] = str(e)
-                    self.import_stats["error_count"] += 1
+                    logger.warning(f"Échec d'enrichissement: {str(e)}")
+                
+                # Import dans la base vectorielle
+                imported = await self._import_to_vector_store(batch)
+                total_imported += imported
+                
+            # Résultat final
+            result["imported"] = total_imported
+            result["details"][method_name] = total_imported
             
         except Exception as e:
-            logger.error(f"Erreur lors de l'importation depuis {source_id}: {str(e)}")
-            self.import_stats["sources_stats"][source_id]["error"] = str(e)
-            self.import_stats["error_count"] += 1
+            logger.error(f"Erreur lors de l'exécution de {method_name} pour {source_id}: {str(e)}")
+            logger.exception(e)
+            result["error"] = str(e)
+            result["details"][method_name] = 0
+        
+        elapsed_time = time.time() - start_time
+        result["time"] = elapsed_time
+        
+        return result
     
     async def _import_to_vector_store(self, documents: List[Dict[str, Any]]) -> int:
         """

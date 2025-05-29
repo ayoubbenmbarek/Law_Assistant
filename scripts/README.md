@@ -54,7 +54,7 @@ L'API Légifrance est organisée en plusieurs contrôleurs, chacun couvrant un a
 | `consult/getTables` | Récupère les tables annuelles pour une période donnée |
 
 ### Search Controller (Recherche dans les textes)
-
+<!-- Not exact those endpoints -->
 | Endpoint | Description |
 |----------|-------------|
 | `search/jurisprudence` | Recherche dans la jurisprudence |

@@ -74,7 +74,7 @@ def authenticate():
             print(f"Réponse: {response.text}")
         sys.exit(1)
 
-def search_codes(token, query="travail", limit=10, page=1):
+def search_codes(token, query="travail", limit=100, page=1):
     """Recherche dans les codes (Code Civil, Code du Travail, etc.)"""
     response = None
     try:
